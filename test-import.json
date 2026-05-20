@@ -1,0 +1,86 @@
+[
+  {
+    "id": "test_nordic_light",
+    "name": "Nordic Light Étterem és kávézó",
+    "address": "1133 Budapest, Váci út 96-98.",
+    "category": "kávézó",
+    "rating": 0,
+    "note": "Étterem és kávézó a Nordic Light irodaházban.",
+    "recommender": "Foltin Dalma",
+    "link": "https://www.facebook.com/canteenfoodnordiclight/",
+    "lat": 47.5294607,
+    "lng": 19.0650443
+  },
+  {
+    "id": "test_cinquecento",
+    "name": "Cinquecento Budapest",
+    "address": "1133 Budapest, Zsilip utca 4.",
+    "category": "olasz",
+    "rating": 0,
+    "note": "Eredeti olasz tészták - menü is van. Pörgős tésztázó az Árpád hídnál, friss házi pasta.",
+    "recommender": "Bándi Máté",
+    "link": "https://cinquecentobudapest.hu/",
+    "lat": 47.5306530,
+    "lng": 19.0648831
+  },
+  {
+    "id": "test_kaptar_bisztro",
+    "name": "Kaptár Bisztró",
+    "address": "1134 Budapest, Váci út 45. (myhive Átrium Park)",
+    "category": "menüs",
+    "rating": 0,
+    "note": "Nagyon klassz hely. Bisztró az Átrium Park irodaházban.",
+    "recommender": "Foltin Dalma",
+    "link": "https://www.facebook.com/kaptarbisztro/",
+    "lat": 47.5274672,
+    "lng": 19.0650063
+  },
+  {
+    "id": "test_engel",
+    "name": "Engel Restaurant",
+    "address": "1134 Budapest, Angyalföldi út 21.",
+    "category": "étterem",
+    "rating": 0,
+    "note": "Szezonális ízek.",
+    "recommender": "Szabó Tünde",
+    "link": "https://engel21.hu/",
+    "lat": 47.5263997,
+    "lng": 19.0663167
+  },
+  {
+    "id": "test_voila",
+    "name": "Voilá Pizzéria",
+    "address": "1134 Budapest, Klapka utca 4-6.",
+    "category": "pizzéria",
+    "rating": 0,
+    "note": "Pizza, menü is van. Kovászos nápolyi pizza, walk-in, foglalás nincs.",
+    "recommender": "Szabó Tünde",
+    "link": "https://www.voilaclub.hu/",
+    "lat": 47.5272159,
+    "lng": 19.0666692
+  },
+  {
+    "id": "test_advance_kantin",
+    "name": "Advance Kantin",
+    "address": "1134 Budapest, Váci út 43. (bejárat: Klapka utca felől, Advance Tower)",
+    "category": "menüs",
+    "rating": 0,
+    "note": "Prémium menza az Advance Tower irodaházban. Hétköznap ebédidőben, önkiszolgáló pultos rendszer.",
+    "recommender": "Szabó Tünde",
+    "link": "https://www.facebook.com/advancekantin/",
+    "lat": 47.5270585,
+    "lng": 19.0647817
+  },
+  {
+    "id": "test_buena",
+    "name": "Buena - World Kitchen & Bar",
+    "address": "1133 Budapest, Váci út 116-118. (Agora Tower)",
+    "category": "nemzetközi",
+    "rating": 0,
+    "note": "Nemzetközi konyha: amerikai, ázsiai, olasz, görög, mexikói. Reggeli, brunch, ebéd, vacsora, koktélok.",
+    "recommender": "Szabó Tünde",
+    "link": "https://buenakitchenandbar.hu/",
+    "lat": 47.5320942,
+    "lng": 19.0656923
+  }
+]

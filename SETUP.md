@@ -22,12 +22,13 @@ API-t hívja.
 A bal oldali menüben **SQL Editor** → **New query**, és futtasd le ezt:
 
 ```sql
+-- Éttermek alaptáblája
 create table public.restaurants (
   id          text primary key,
   name        text not null,
   address     text not null,
   category    text,
-  rating      integer,
+  rating      integer,             -- DEPRECATED: a régi (egyetlen csillag) modellből maradt, az új kód a restaurant_ratings táblát használja
   note        text,
   recommender text,
   link        text,
@@ -36,12 +37,32 @@ create table public.restaurants (
   updated_at  timestamptz default now()
 );
 
-alter table public.restaurants enable row level security;
+-- Egyéni értékelések (több ember adhat csillagot ugyanarra az étteremre,
+-- az appban a megjelenített érték = átlag).
+create table public.restaurant_ratings (
+  id            bigserial primary key,
+  restaurant_id text not null references public.restaurants(id) on delete cascade,
+  rater         text not null,
+  value         integer not null check (value between 1 and 5),
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now(),
+  unique (restaurant_id, rater)   -- egy név egy étteremre csak egyet rakhat (de azt felülírhatja)
+);
+
+create index on public.restaurant_ratings (restaurant_id);
+
+alter table public.restaurants        enable row level security;
+alter table public.restaurant_ratings enable row level security;
 
 create policy "anyone can read"   on public.restaurants for select using (true);
 create policy "anyone can insert" on public.restaurants for insert with check (true);
 create policy "anyone can update" on public.restaurants for update using (true);
 create policy "anyone can delete" on public.restaurants for delete using (true);
+
+create policy "anyone can read"   on public.restaurant_ratings for select using (true);
+create policy "anyone can insert" on public.restaurant_ratings for insert with check (true);
+create policy "anyone can update" on public.restaurant_ratings for update using (true);
+create policy "anyone can delete" on public.restaurant_ratings for delete using (true);
 ```
 
 > ⚠️ A négy "anyone can ..." policy bárkinek megengedi az írást/törlést is.

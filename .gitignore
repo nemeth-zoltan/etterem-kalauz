@@ -3,4 +3,12 @@ config.js
 .DS_Store
 node_modules/
 
+# Exportált / felhasználói import JSON-ok (a repo csak a mintát tartja)
 *import*.json
+!test-import.json
+ettermek_*.json
+ettermek_*.xml
+
+# Helyi fejlesztői eszközök
+.claude/
+.playwright-mcp/

@@ -88,7 +88,27 @@
     font-weight: 700;
     margin-right: 4px;
   }
-  .restaurant-card .stars { color: #ffb700; font-size: 14px; }
+  .restaurant-card .stars { font-size: 14px; }
+  .restaurant-card .rating-count { font-size: 12px; color: #888; margin-left: 4px; }
+
+  /* Megjelenítő csillagok (átlag + fél-csillag támogatással) */
+  .rstars { display: inline-flex; vertical-align: middle; }
+  .rs {
+    position: relative;
+    display: inline-block;
+    color: #ddd;
+    line-height: 1;
+  }
+  .rs.full { color: #ffb700; }
+  .rs.half::before {
+    content: '\2605';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 50%;
+    overflow: hidden;
+    color: #ffb700;
+  }
   
   .empty-state {
     text-align: center;
@@ -222,30 +242,40 @@
     <div class="loading" id="geocodeLoading" style="display:none;">📍 Cím keresése a térképen...</div>
     
     <label>Kategória</label>
-    <input type="text" id="fCategory" list="categoryList" placeholder="pl. magyar, ázsiai, pizzéria, kávézó..." />
-    <datalist id="categoryList">
-      <option value="magyar">
-      <option value="olasz">
-      <option value="ázsiai">
-      <option value="pizzéria">
-      <option value="gyors-étterem">
-      <option value="kávézó">
-      <option value="menüs">
-      <option value="hamburger">
-      <option value="gyros / kebab">
-      <option value="vegetáriánus">
-      <option value="reggeliző">
-      <option value="cukrászda">
-    </datalist>
-    
-    <label>Értékelés</label>
+    <select id="fCategory">
+      <option value="">— válassz —</option>
+      <option value="magyar">magyar</option>
+      <option value="olasz">olasz</option>
+      <option value="ázsiai">ázsiai</option>
+      <option value="pizzéria">pizzéria</option>
+      <option value="gyors-étterem">gyors-étterem</option>
+      <option value="kávézó">kávézó</option>
+      <option value="menüs">menüs</option>
+      <option value="hamburger">hamburger</option>
+      <option value="gyros / kebab">gyros / kebab</option>
+      <option value="vegetáriánus">vegetáriánus</option>
+      <option value="reggeliző">reggeliző</option>
+      <option value="cukrászda">cukrászda</option>
+      <option value="nemzetközi">nemzetközi</option>
+      <option value="étterem">étterem</option>
+      <option value="__other__">Egyéb…</option>
+    </select>
+    <input type="text" id="fCategoryOther" placeholder="Add meg a kategóriát" style="display:none; margin-top:6px;" />
+
+    <label>Te (ki értékel?)</label>
+    <input type="text" id="fRater" placeholder="pl. Németh Zoli" />
+    <div style="font-size:11px; color:#888; margin-top:2px;">A nevedet eltároljuk a böngészőben — csak egyszer kell beírni.</div>
+
+    <label>Értékelésed</label>
     <div class="stars-input" id="starsInput">
       <span class="star" data-v="1">★</span>
       <span class="star" data-v="2">★</span>
       <span class="star" data-v="3">★</span>
       <span class="star" data-v="4">★</span>
       <span class="star" data-v="5">★</span>
+      <span id="myRatingHint" style="font-size:12px; color:#888; margin-left:8px; align-self:center;"></span>
     </div>
+    <div id="ratingsBreakdown" style="margin-top:8px; font-size:12px; color:#444;"></div>
     
     <label>Megjegyzés / leírás</label>
     <textarea id="fNote" placeholder="Mit érdemes rendelni? Mi a véleményed?"></textarea>
@@ -277,6 +307,7 @@
   // ez a token, pl. https://example.com/#admin=kacsa-2026
   // Üresre állítva minden gomb látszik mindenkinek.
   const ADMIN_TOKEN = 'kacsa-2026';
+  const RATINGS_TABLE = 'restaurant_ratings';
 
   function applyAdminMode() {
     const hash = window.location.hash.replace(/^#/, '');
@@ -291,9 +322,39 @@
   
   // === State ===
   let restaurants = [];
+  let ratingsByRestaurant = {};   // id -> [{ rater, value }, ...]
   let map, markersLayer;
-  let currentRating = 0;
+  let currentRating = 0;          // a modálban a "saját" csillag, amit épp állítasz
   let tempMarker = null;
+  let myRaterName = localStorage.getItem('rater_name') || '';
+
+  // === Rating helpers ===
+  function averageRating(restaurantId) {
+    const list = ratingsByRestaurant[restaurantId] || [];
+    if (list.length === 0) return { avg: 0, count: 0 };
+    const sum = list.reduce((s, r) => s + r.value, 0);
+    return { avg: sum / list.length, count: list.length };
+  }
+
+  function renderStarsHTML(value, size) {
+    const px = size || 14;
+    const rounded = Math.round((+value || 0) * 2) / 2;
+    let html = `<span class="rstars" style="font-size:${px}px;">`;
+    for (let i = 1; i <= 5; i++) {
+      if (rounded >= i)            html += '<span class="rs full">★</span>';
+      else if (rounded >= i - 0.5) html += '<span class="rs half">★</span>';
+      else                         html += '<span class="rs">★</span>';
+    }
+    html += '</span>';
+    return html;
+  }
+
+  function myRatingFor(restaurantId) {
+    if (!myRaterName) return 0;
+    const list = ratingsByRestaurant[restaurantId] || [];
+    const mine = list.find(r => r.rater.toLowerCase() === myRaterName.toLowerCase());
+    return mine ? mine.value : 0;
+  }
   
   // === Status ===
   function setStatus(msg, type) {
@@ -336,13 +397,21 @@
   async function loadData() {
     if (!checkConfig()) return;
     try {
-      const data = await supabaseRequest('GET', `${TABLE_NAME}?select=*&order=rating.desc.nullslast`);
+      const [data, ratingsRows] = await Promise.all([
+        supabaseRequest('GET', `${TABLE_NAME}?select=*`),
+        // ratings tábla opcionális: ha még nem létezik, üres listával folytatunk
+        supabaseRequest('GET', `${RATINGS_TABLE}?select=restaurant_id,rater,value`)
+          .catch(e => {
+            console.warn('restaurant_ratings tábla még nem létezik vagy nem elérhető — futtasd az SQL-t a SETUP.md-ből.', e.message);
+            return [];
+          })
+      ]);
       restaurants = data.map(row => ({
         id: row.id,
         name: row.name,
         address: row.address,
         category: row.category,
-        rating: row.rating,
+        rating: row.rating,            // legacy, már nem írjuk
         note: row.note,
         recommender: row.recommender,
         link: row.link,
@@ -350,12 +419,51 @@
         lng: parseFloat(row.lng),
         updatedAt: row.updated_at
       }));
+      ratingsByRestaurant = {};
+      for (const r of (ratingsRows || [])) {
+        (ratingsByRestaurant[r.restaurant_id] ||= []).push({ rater: r.rater, value: r.value });
+      }
+      // rendezés: átlag csökkenő, aztán név
+      restaurants.sort((a, b) => {
+        const aa = averageRating(a.id).avg, bb = averageRating(b.id).avg;
+        if (bb !== aa) return bb - aa;
+        return a.name.localeCompare(b.name, 'hu');
+      });
       setStatus(`✅ ${restaurants.length} étterem betöltve`, 'ok');
       renderAll();
     } catch (e) {
       setStatus('❌ Betöltési hiba: ' + e.message, 'err');
       console.error(e);
     }
+  }
+
+  async function upsertMyRating(restaurantId, value) {
+    if (!myRaterName) return;
+    const payload = {
+      restaurant_id: restaurantId,
+      rater: myRaterName,
+      value: value,
+      updated_at: new Date().toISOString()
+    };
+    // PostgREST upsert a (restaurant_id, rater) unique kulcsra
+    await fetch(`${SUPABASE_URL}/rest/v1/${RATINGS_TABLE}?on_conflict=restaurant_id,rater`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify(payload)
+    }).then(r => { if (!r.ok) throw new Error('rating save failed: ' + r.status); });
+  }
+
+  async function deleteMyRating(restaurantId) {
+    if (!myRaterName) return;
+    await supabaseRequest(
+      'DELETE',
+      `${RATINGS_TABLE}?restaurant_id=eq.${encodeURIComponent(restaurantId)}&rater=eq.${encodeURIComponent(myRaterName)}`
+    );
   }
   
   async function upsertRestaurant(r) {
@@ -424,6 +532,33 @@
   }
   
   // === Modal ===
+  function setCategoryFieldValue(val) {
+    const sel = document.getElementById('fCategory');
+    const other = document.getElementById('fCategoryOther');
+    if (!val) {
+      sel.value = '';
+      other.style.display = 'none';
+      other.value = '';
+      return;
+    }
+    const known = [...sel.options].some(o => o.value === val);
+    if (known) {
+      sel.value = val;
+      other.style.display = 'none';
+      other.value = '';
+    } else {
+      sel.value = '__other__';
+      other.style.display = 'block';
+      other.value = val;
+    }
+  }
+
+  function readCategoryFieldValue() {
+    const sel = document.getElementById('fCategory');
+    if (sel.value === '__other__') return document.getElementById('fCategoryOther').value.trim();
+    return sel.value;
+  }
+
   function openAddModal(lat, lng) {
     document.getElementById('modalTitle').textContent = '➕ Új étterem hozzáadása';
     document.getElementById('editId').value = '';
@@ -431,12 +566,14 @@
     document.getElementById('editLng').value = lng || '';
     document.getElementById('fName').value = '';
     document.getElementById('fAddress').value = '';
-    document.getElementById('fCategory').value = '';
+    setCategoryFieldValue('');
     document.getElementById('fNote').value = '';
     document.getElementById('fRecommender').value = '';
     document.getElementById('fLink').value = '';
+    document.getElementById('fRater').value = myRaterName;
     currentRating = 0;
     updateStars();
+    refreshRatingsBreakdown(null);
     document.getElementById('deleteBtn').style.display = 'none';
     document.getElementById('formModal').classList.add('active');
     
@@ -463,14 +600,46 @@
     document.getElementById('editLng').value = r.lng;
     document.getElementById('fName').value = r.name || '';
     document.getElementById('fAddress').value = r.address || '';
-    document.getElementById('fCategory').value = r.category || '';
+    setCategoryFieldValue(r.category || '');
     document.getElementById('fNote').value = r.note || '';
     document.getElementById('fRecommender').value = r.recommender || '';
     document.getElementById('fLink').value = r.link || '';
-    currentRating = r.rating || 0;
+    document.getElementById('fRater').value = myRaterName;
+    currentRating = myRatingFor(r.id);
     updateStars();
+    refreshRatingsBreakdown(r.id);
     document.getElementById('deleteBtn').style.display = 'inline-block';
     document.getElementById('formModal').classList.add('active');
+  }
+
+  function refreshRatingsBreakdown(restaurantId) {
+    const box = document.getElementById('ratingsBreakdown');
+    const hint = document.getElementById('myRatingHint');
+    if (!restaurantId) {
+      box.innerHTML = '<em>Új étterem — még senki sem értékelte.</em>';
+      hint.textContent = '';
+      return;
+    }
+    const list = (ratingsByRestaurant[restaurantId] || []).slice().sort((a, b) => b.value - a.value);
+    const { avg, count } = averageRating(restaurantId);
+    if (count === 0) {
+      box.innerHTML = '<em>Még senki sem értékelte.</em>';
+    } else {
+      const rounded = Math.round(avg * 2) / 2;
+      const rows = list.map(r =>
+        `<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">
+          ${renderStarsHTML(r.value, 12)}
+          <span>${escapeHtml(r.rater)}</span>
+        </div>`).join('');
+      box.innerHTML = `
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <b>Átlag:</b> ${renderStarsHTML(rounded, 14)}
+          <span>${rounded.toFixed(1)} (${count} értékelés)</span>
+        </div>
+        ${rows}
+      `;
+    }
+    hint.textContent = currentRating ? `(a saját értékelésed: ${currentRating}★)` : '';
   }
   
   function closeModal() {
@@ -480,16 +649,50 @@
   
   // === Stars ===
   function updateStars() {
-    document.querySelectorAll('.star').forEach(s => {
+    document.querySelectorAll('#starsInput .star').forEach(s => {
       s.classList.toggle('active', parseInt(s.dataset.v) <= currentRating);
     });
+    const hint = document.getElementById('myRatingHint');
+    if (hint) {
+      if (!myRaterName) {
+        hint.textContent = '— add meg a neved fent, hogy értékelhess';
+        hint.style.color = '#c8102e';
+      } else {
+        hint.textContent = currentRating ? `(a saját értékelésed: ${currentRating}★, kattints újra a törléshez)` : '(kattints a csillagra)';
+        hint.style.color = '#888';
+      }
+    }
   }
-  document.querySelectorAll('.star').forEach(s => {
+  document.querySelectorAll('#starsInput .star').forEach(s => {
     s.addEventListener('click', () => {
+      if (!myRaterName) {
+        document.getElementById('fRater').focus();
+        updateStars();
+        return;
+      }
       const v = parseInt(s.dataset.v);
       currentRating = (currentRating === v) ? 0 : v;
       updateStars();
     });
+  });
+
+  // Te-mező: nevet localStorage-ba és frissítjük a state-et
+  document.getElementById('fRater').addEventListener('input', e => {
+    myRaterName = e.target.value.trim();
+    localStorage.setItem('rater_name', myRaterName);
+    updateStars();
+  });
+
+  // Kategória select: ha 'Egyéb' → megjelenik a szabad szövegű mező
+  document.getElementById('fCategory').addEventListener('change', e => {
+    const other = document.getElementById('fCategoryOther');
+    if (e.target.value === '__other__') {
+      other.style.display = 'block';
+      other.focus();
+    } else {
+      other.style.display = 'none';
+      other.value = '';
+    }
   });
   
   // === Save / Delete ===
@@ -521,16 +724,26 @@
       id,
       name,
       address,
-      category: document.getElementById('fCategory').value.trim(),
-      rating: currentRating,
+      category: readCategoryFieldValue(),
+      rating: null,    // legacy mező, már nem használjuk
       note: document.getElementById('fNote').value.trim(),
       recommender: document.getElementById('fRecommender').value.trim(),
       link: document.getElementById('fLink').value.trim(),
       lat, lng
     };
-    
+
     try {
       await upsertRestaurant(data);
+      // saját értékelés mentése külön táblába (csak ha van név és állítottad)
+      if (myRaterName) {
+        const prev = myRatingFor(id);
+        if (currentRating > 0) {
+          await upsertMyRating(id, currentRating);
+        } else if (prev > 0) {
+          // korábban értékelted, most lenulláztad → töröljük
+          await deleteMyRating(id);
+        }
+      }
       setStatus('✅ Mentve!', 'ok');
       closeModal();
       await loadData();
@@ -565,7 +778,10 @@
   function renderMarkers() {
     markersLayer.clearLayers();
     restaurants.forEach(r => {
-      const stars = '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0));
+      const { avg, count } = averageRating(r.id);
+      const ratingHtml = count > 0
+        ? `<p>${renderStarsHTML(avg, 16)} <span style="color:#555;font-size:12px;">${avg.toFixed(1)} (${count})</span></p>`
+        : `<p style="color:#888;font-size:12px;">Még nincs értékelés</p>`;
       const marker = L.marker([r.lat, r.lng], {
         icon: L.divIcon({
           className: 'r-marker',
@@ -574,18 +790,18 @@
           iconAnchor: [15, 30]
         })
       });
-      
+
       const popup = `
         <div class="popup-content">
           <h3>${escapeHtml(r.name)}</h3>
           ${r.category ? `<p><span style="background:#c8102e;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">${escapeHtml(r.category)}</span></p>` : ''}
-          <p style="color:#ffb700;font-size:16px;">${stars}</p>
+          ${ratingHtml}
           <p>📍 ${escapeHtml(r.address)}</p>
           ${r.note ? `<p>📝 ${escapeHtml(r.note)}</p>` : ''}
           ${r.recommender ? `<p>👤 Ajánlja: <b>${escapeHtml(r.recommender)}</b></p>` : ''}
           ${r.link ? `<p>🔗 <a href="${escapeHtml(r.link)}" target="_blank">Megnyitás</a></p>` : ''}
           <div class="popup-actions">
-            <button class="btn btn-small btn-primary" onclick="openEditModal('${r.id}')">✏️ Szerkesztés</button>
+            <button class="btn btn-small btn-primary" onclick="openEditModal('${r.id}')">✏️ Szerkesztés / értékelés</button>
           </div>
         </div>
       `;
@@ -615,15 +831,22 @@
       return;
     }
     
-    filtered.sort((a,b) => (b.rating || 0) - (a.rating || 0));
-    
+    filtered.sort((a, b) => {
+      const aa = averageRating(a.id).avg, bb = averageRating(b.id).avg;
+      if (bb !== aa) return bb - aa;
+      return a.name.localeCompare(b.name, 'hu');
+    });
+
     list.innerHTML = filtered.map(r => {
-      const stars = '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0));
+      const { avg, count } = averageRating(r.id);
+      const ratingHtml = count > 0
+        ? `${renderStarsHTML(avg, 14)}<span class="rating-count">${avg.toFixed(1)} (${count})</span>`
+        : `<span class="rating-count" style="font-style:italic;">nincs értékelés</span>`;
       return `
         <div class="restaurant-card" onclick="focusRestaurant('${r.id}')">
           <h3>${escapeHtml(r.name)}</h3>
           ${r.category ? `<span class="category">${escapeHtml(r.category)}</span>` : ''}
-          <span class="stars">${stars}</span>
+          <span class="stars">${ratingHtml}</span>
           <div class="meta">📍 ${escapeHtml(r.address)}</div>
           ${r.recommender ? `<div class="meta">👤 ${escapeHtml(r.recommender)}</div>` : ''}
           ${r.note ? `<div class="meta">📝 ${escapeHtml(r.note.substring(0, 80))}${r.note.length > 80 ? '...' : ''}</div>` : ''}

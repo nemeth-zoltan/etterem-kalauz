@@ -1,0 +1,7 @@
+[build]
+  publish = "."
+  command = "echo \"window.APP_CONFIG = { SUPABASE_URL: '$SUPABASE_URL', SUPABASE_ANON_KEY: '$SUPABASE_ANON_KEY' };\" > config.js"
+
+[build.environment]
+  NODE_VERSION = "18"
+  

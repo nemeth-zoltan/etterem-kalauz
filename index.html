@@ -1,0 +1,722 @@
+<!-- Jófogás|Vatera étterem kalauz - Supabase verzió -->
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #fffbe6; color: #222; }
+  
+  .header {
+    background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+    color: #1a1a1a;
+    padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 4px solid #1a1a1a;
+  }
+  .header h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+  .header h1 span { color: #c8102e; }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  
+  .btn {
+    background: #1a1a1a;
+    color: #ffd700;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .btn:hover { background: #333; transform: translateY(-1px); }
+  .btn-primary { background: #c8102e; color: #fff; }
+  .btn-primary:hover { background: #a00d24; }
+  .btn-secondary { background: #fff; color: #1a1a1a; border: 2px solid #1a1a1a; }
+  .btn-danger { background: #c8102e; color: #fff; }
+  .btn-small { padding: 4px 10px; font-size: 12px; }
+  
+  .main { display: flex; height: calc(100vh - 70px); }
+  .sidebar {
+    width: 380px;
+    background: #fff;
+    border-right: 3px solid #1a1a1a;
+    overflow-y: auto;
+    padding: 14px;
+  }
+  #map { flex: 1; }
+  
+  .filters {
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .filters input, .filters select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 2px solid #1a1a1a;
+    border-radius: 6px;
+    font-size: 14px;
+    background: #fffbe6;
+  }
+  .filters input:focus, .filters select:focus { outline: 2px solid #ffd700; }
+  
+  .restaurant-card {
+    background: #fffbe6;
+    border: 2px solid #1a1a1a;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .restaurant-card:hover { background: #ffd700; transform: translateX(-2px); box-shadow: 3px 3px 0 #1a1a1a; }
+  .restaurant-card h3 { font-size: 15px; margin-bottom: 4px; }
+  .restaurant-card .meta { font-size: 12px; color: #555; margin-bottom: 4px; }
+  .restaurant-card .category {
+    display: inline-block;
+    background: #c8102e;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .restaurant-card .stars { color: #ffb700; font-size: 14px; }
+  
+  .empty-state {
+    text-align: center;
+    padding: 30px 15px;
+    color: #888;
+    font-size: 14px;
+  }
+  
+  /* Modal */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 15px;
+  }
+  .modal-bg.active { display: flex; }
+  .modal {
+    background: #fff;
+    border: 3px solid #1a1a1a;
+    border-radius: 10px;
+    padding: 22px;
+    max-width: 500px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 6px 6px 0 #ffd700;
+  }
+  .modal h2 { margin-bottom: 16px; color: #c8102e; }
+  .modal label { display: block; margin-top: 10px; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .modal input, .modal textarea, .modal select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 2px solid #1a1a1a;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .modal textarea { min-height: 60px; resize: vertical; }
+  .modal-actions { margin-top: 18px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  
+  .stars-input { display: flex; gap: 4px; }
+  .star { font-size: 28px; cursor: pointer; color: #ddd; transition: color 0.1s; }
+  .star.active { color: #ffb700; }
+  
+  .popup-content h3 { margin-bottom: 6px; color: #c8102e; }
+  .popup-content p { font-size: 13px; margin-bottom: 4px; }
+  .popup-content .popup-actions { margin-top: 8px; display: flex; gap: 6px; }
+  
+  .info-banner {
+    background: #fffbe6;
+    border: 2px dashed #1a1a1a;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    margin-bottom: 12px;
+    color: #555;
+  }
+  
+  .status-banner {
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+  .status-ok { background: #d4f4d4; border: 2px solid #2a8a2a; color: #1a5a1a; }
+  .status-err { background: #ffd4d4; border: 2px solid #c8102e; color: #8a0a1a; }
+  
+  .loading {
+    text-align: center;
+    padding: 12px;
+    color: #888;
+    font-size: 13px;
+  }
+  
+  @media (max-width: 768px) {
+    .main { flex-direction: column; height: calc(100vh - 130px); }
+    .sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 3px solid #1a1a1a; }
+    .header h1 { font-size: 18px; }
+  }
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+<div class="header">
+  <h1>🍴 Jófogás<span>|</span>Vatera étterem kalauz</h1>
+  <div class="header-actions">
+    <button class="btn btn-primary" onclick="openAddModal()">➕ Új étterem</button>
+    <button class="btn btn-secondary" onclick="loadData()">🔄 Frissítés</button>
+    <button class="btn btn-secondary" onclick="exportJSON()">📥 JSON</button>
+    <button class="btn btn-secondary" onclick="exportXML()">📥 XML</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON(event)" />
+  </div>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <div id="statusBanner"></div>
+    <div class="info-banner">
+      💡 Kattints a térképre új étterem hozzáadásához, vagy használd a "➕ Új étterem" gombot!
+    </div>
+    <div class="filters">
+      <input type="text" id="searchInput" placeholder="🔍 Keresés név vagy cím alapján..." oninput="renderList()" />
+      <select id="categoryFilter" onchange="renderList()">
+        <option value="">Minden kategória</option>
+      </select>
+    </div>
+    <div id="restaurantList"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<!-- Add/Edit Modal -->
+<div class="modal-bg" id="formModal">
+  <div class="modal">
+    <h2 id="modalTitle">➕ Új étterem hozzáadása</h2>
+    <input type="hidden" id="editId" />
+    <input type="hidden" id="editLat" />
+    <input type="hidden" id="editLng" />
+    
+    <label>Név *</label>
+    <input type="text" id="fName" placeholder="pl. Menza Étterem" />
+    
+    <label>Cím *</label>
+    <input type="text" id="fAddress" placeholder="pl. Budapest, Liszt Ferenc tér 2." />
+    <div class="loading" id="geocodeLoading" style="display:none;">📍 Cím keresése a térképen...</div>
+    
+    <label>Kategória</label>
+    <input type="text" id="fCategory" list="categoryList" placeholder="pl. magyar, ázsiai, pizzéria, kávézó..." />
+    <datalist id="categoryList">
+      <option value="magyar">
+      <option value="olasz">
+      <option value="ázsiai">
+      <option value="pizzéria">
+      <option value="gyors-étterem">
+      <option value="kávézó">
+      <option value="menüs">
+      <option value="hamburger">
+      <option value="gyros / kebab">
+      <option value="vegetáriánus">
+      <option value="reggeliző">
+      <option value="cukrászda">
+    </datalist>
+    
+    <label>Értékelés</label>
+    <div class="stars-input" id="starsInput">
+      <span class="star" data-v="1">★</span>
+      <span class="star" data-v="2">★</span>
+      <span class="star" data-v="3">★</span>
+      <span class="star" data-v="4">★</span>
+      <span class="star" data-v="5">★</span>
+    </div>
+    
+    <label>Megjegyzés / leírás</label>
+    <textarea id="fNote" placeholder="Mit érdemes rendelni? Mi a véleményed?"></textarea>
+    
+    <label>Ki ajánlja?</label>
+    <input type="text" id="fRecommender" placeholder="pl. Kovács Béla" />
+    
+    <label>Link (weboldal, Google Maps, stb.)</label>
+    <input type="url" id="fLink" placeholder="https://..." />
+    
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Mégse</button>
+      <button class="btn btn-danger btn-small" id="deleteBtn" onclick="deleteRestaurant()" style="display:none;">🗑️ Törlés</button>
+      <button class="btn btn-primary" onclick="saveRestaurant()">💾 Mentés</button>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script>
+  // ============================================================
+  // ⚙️ KONFIGURÁCIÓ - a config.js fájlból töltődik be!
+  // ============================================================
+  const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || 'MISSING';
+  const SUPABASE_ANON_KEY = window.APP_CONFIG?.SUPABASE_ANON_KEY || 'MISSING';
+  const TABLE_NAME = 'restaurants';
+  // ============================================================
+  
+  // === State ===
+  let restaurants = [];
+  let map, markersLayer;
+  let currentRating = 0;
+  let tempMarker = null;
+  
+  // === Status ===
+  function setStatus(msg, type) {
+    const banner = document.getElementById('statusBanner');
+    if (!msg) { banner.innerHTML = ''; return; }
+    banner.innerHTML = `<div class="status-banner status-${type}">${msg}</div>`;
+    if (type === 'ok') setTimeout(() => banner.innerHTML = '', 3000);
+  }
+  
+  // === Supabase API ===
+  function checkConfig() {
+    if (SUPABASE_URL === 'MISSING' || SUPABASE_ANON_KEY === 'MISSING' ||
+        SUPABASE_URL.includes('YOUR-PROJECT') || SUPABASE_ANON_KEY.includes('YOUR-ANON-KEY')) {
+      setStatus('⚠️ Hiányzik a config.js! Másold config.example.js-ből, és töltsd ki a Supabase adatokkal.', 'err');
+      return false;
+    }
+    return true;
+  }
+  
+  async function supabaseRequest(method, path, body) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      method,
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`Supabase hiba (${res.status}): ${txt}`);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  }
+  
+  // === Load / Save / Delete ===
+  async function loadData() {
+    if (!checkConfig()) return;
+    try {
+      const data = await supabaseRequest('GET', `${TABLE_NAME}?select=*&order=rating.desc.nullslast`);
+      restaurants = data.map(row => ({
+        id: row.id,
+        name: row.name,
+        address: row.address,
+        category: row.category,
+        rating: row.rating,
+        note: row.note,
+        recommender: row.recommender,
+        link: row.link,
+        lat: parseFloat(row.lat),
+        lng: parseFloat(row.lng),
+        updatedAt: row.updated_at
+      }));
+      setStatus(`✅ ${restaurants.length} étterem betöltve`, 'ok');
+      renderAll();
+    } catch (e) {
+      setStatus('❌ Betöltési hiba: ' + e.message, 'err');
+      console.error(e);
+    }
+  }
+  
+  async function upsertRestaurant(r) {
+    const payload = {
+      id: r.id,
+      name: r.name,
+      address: r.address,
+      category: r.category || null,
+      rating: r.rating || null,
+      note: r.note || null,
+      recommender: r.recommender || null,
+      link: r.link || null,
+      lat: r.lat,
+      lng: r.lng,
+      updated_at: new Date().toISOString()
+    };
+    // Check if exists
+    const existing = restaurants.find(x => x.id === r.id);
+    if (existing) {
+      await supabaseRequest('PATCH', `${TABLE_NAME}?id=eq.${encodeURIComponent(r.id)}`, payload);
+    } else {
+      await supabaseRequest('POST', TABLE_NAME, payload);
+    }
+  }
+  
+  async function deleteFromDB(id) {
+    await supabaseRequest('DELETE', `${TABLE_NAME}?id=eq.${encodeURIComponent(id)}`);
+  }
+  
+  // === Init Map ===
+  function initMap() {
+    map = L.map('map').setView([47.4979, 19.0402], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+    markersLayer = L.layerGroup().addTo(map);
+    
+    map.on('click', function(e) {
+      if (document.getElementById('formModal').classList.contains('active')) return;
+      openAddModal(e.latlng.lat, e.latlng.lng);
+    });
+  }
+  
+  // === Geocoding ===
+  async function geocodeAddress(address) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'hu' } });
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+    return null;
+  }
+  
+  async function reverseGeocode(lat, lng) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=hu`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.display_name) {
+        document.getElementById('fAddress').value = data.display_name;
+      }
+    } catch (e) {}
+  }
+  
+  // === Modal ===
+  function openAddModal(lat, lng) {
+    document.getElementById('modalTitle').textContent = '➕ Új étterem hozzáadása';
+    document.getElementById('editId').value = '';
+    document.getElementById('editLat').value = lat || '';
+    document.getElementById('editLng').value = lng || '';
+    document.getElementById('fName').value = '';
+    document.getElementById('fAddress').value = '';
+    document.getElementById('fCategory').value = '';
+    document.getElementById('fNote').value = '';
+    document.getElementById('fRecommender').value = '';
+    document.getElementById('fLink').value = '';
+    currentRating = 0;
+    updateStars();
+    document.getElementById('deleteBtn').style.display = 'none';
+    document.getElementById('formModal').classList.add('active');
+    
+    if (lat && lng) {
+      reverseGeocode(lat, lng);
+      if (tempMarker) map.removeLayer(tempMarker);
+      tempMarker = L.marker([lat, lng], {
+        icon: L.divIcon({
+          className: 'temp-marker',
+          html: '<div style="background:#c8102e;color:#fff;border:2px solid #1a1a1a;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;">+</div>',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+      }).addTo(map);
+    }
+  }
+  
+  function openEditModal(id) {
+    const r = restaurants.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('modalTitle').textContent = '✏️ Étterem szerkesztése';
+    document.getElementById('editId').value = r.id;
+    document.getElementById('editLat').value = r.lat;
+    document.getElementById('editLng').value = r.lng;
+    document.getElementById('fName').value = r.name || '';
+    document.getElementById('fAddress').value = r.address || '';
+    document.getElementById('fCategory').value = r.category || '';
+    document.getElementById('fNote').value = r.note || '';
+    document.getElementById('fRecommender').value = r.recommender || '';
+    document.getElementById('fLink').value = r.link || '';
+    currentRating = r.rating || 0;
+    updateStars();
+    document.getElementById('deleteBtn').style.display = 'inline-block';
+    document.getElementById('formModal').classList.add('active');
+  }
+  
+  function closeModal() {
+    document.getElementById('formModal').classList.remove('active');
+    if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+  }
+  
+  // === Stars ===
+  function updateStars() {
+    document.querySelectorAll('.star').forEach(s => {
+      s.classList.toggle('active', parseInt(s.dataset.v) <= currentRating);
+    });
+  }
+  document.querySelectorAll('.star').forEach(s => {
+    s.addEventListener('click', () => {
+      const v = parseInt(s.dataset.v);
+      currentRating = (currentRating === v) ? 0 : v;
+      updateStars();
+    });
+  });
+  
+  // === Save / Delete ===
+  async function saveRestaurant() {
+    if (!checkConfig()) return;
+    const name = document.getElementById('fName').value.trim();
+    const address = document.getElementById('fAddress').value.trim();
+    
+    if (!name) { alert('A név megadása kötelező!'); return; }
+    if (!address) { alert('A cím megadása kötelező!'); return; }
+    
+    let lat = parseFloat(document.getElementById('editLat').value);
+    let lng = parseFloat(document.getElementById('editLng').value);
+    
+    if (!lat || !lng) {
+      document.getElementById('geocodeLoading').style.display = 'block';
+      const coords = await geocodeAddress(address);
+      document.getElementById('geocodeLoading').style.display = 'none';
+      if (!coords) {
+        alert('Nem találom a címet a térképen. Kattints a térképre a pontos hely megjelöléséhez!');
+        return;
+      }
+      lat = coords.lat;
+      lng = coords.lng;
+    }
+    
+    const id = document.getElementById('editId').value || ('r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
+    const data = {
+      id,
+      name,
+      address,
+      category: document.getElementById('fCategory').value.trim(),
+      rating: currentRating,
+      note: document.getElementById('fNote').value.trim(),
+      recommender: document.getElementById('fRecommender').value.trim(),
+      link: document.getElementById('fLink').value.trim(),
+      lat, lng
+    };
+    
+    try {
+      await upsertRestaurant(data);
+      setStatus('✅ Mentve!', 'ok');
+      closeModal();
+      await loadData();
+      map.setView([lat, lng], Math.max(map.getZoom(), 15));
+    } catch (e) {
+      setStatus('❌ Mentési hiba: ' + e.message, 'err');
+      console.error(e);
+    }
+  }
+  
+  async function deleteRestaurant() {
+    const id = document.getElementById('editId').value;
+    if (!id) return;
+    if (!confirm('Biztosan törlöd ezt az éttermet?')) return;
+    try {
+      await deleteFromDB(id);
+      setStatus('✅ Törölve!', 'ok');
+      closeModal();
+      await loadData();
+    } catch (e) {
+      setStatus('❌ Törlési hiba: ' + e.message, 'err');
+    }
+  }
+  
+  // === Render ===
+  function renderAll() {
+    renderMarkers();
+    renderList();
+    renderCategoryFilter();
+  }
+  
+  function renderMarkers() {
+    markersLayer.clearLayers();
+    restaurants.forEach(r => {
+      const stars = '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0));
+      const marker = L.marker([r.lat, r.lng], {
+        icon: L.divIcon({
+          className: 'r-marker',
+          html: `<div style="background:#ffd700;border:2px solid #1a1a1a;border-radius:50% 50% 50% 0;width:30px;height:30px;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);"><span style="transform:rotate(45deg);font-size:16px;">🍽️</span></div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 30]
+        })
+      });
+      
+      const popup = `
+        <div class="popup-content">
+          <h3>${escapeHtml(r.name)}</h3>
+          ${r.category ? `<p><span style="background:#c8102e;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">${escapeHtml(r.category)}</span></p>` : ''}
+          <p style="color:#ffb700;font-size:16px;">${stars}</p>
+          <p>📍 ${escapeHtml(r.address)}</p>
+          ${r.note ? `<p>📝 ${escapeHtml(r.note)}</p>` : ''}
+          ${r.recommender ? `<p>👤 Ajánlja: <b>${escapeHtml(r.recommender)}</b></p>` : ''}
+          ${r.link ? `<p>🔗 <a href="${escapeHtml(r.link)}" target="_blank">Megnyitás</a></p>` : ''}
+          <div class="popup-actions">
+            <button class="btn btn-small btn-primary" onclick="openEditModal('${r.id}')">✏️ Szerkesztés</button>
+          </div>
+        </div>
+      `;
+      marker.bindPopup(popup);
+      markersLayer.addLayer(marker);
+    });
+  }
+  
+  function renderList() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const catFilter = document.getElementById('categoryFilter').value;
+    const list = document.getElementById('restaurantList');
+    
+    let filtered = restaurants.filter(r => {
+      const matchSearch = !search || 
+        r.name.toLowerCase().includes(search) || 
+        (r.address || '').toLowerCase().includes(search) ||
+        (r.recommender || '').toLowerCase().includes(search);
+      const matchCat = !catFilter || r.category === catFilter;
+      return matchSearch && matchCat;
+    });
+    
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty-state">
+        ${restaurants.length === 0 ? '🍽️ Még nincs egy étterem se.<br>Adj hozzá egyet!' : '🔍 Nincs találat.'}
+      </div>`;
+      return;
+    }
+    
+    filtered.sort((a,b) => (b.rating || 0) - (a.rating || 0));
+    
+    list.innerHTML = filtered.map(r => {
+      const stars = '★'.repeat(r.rating || 0) + '☆'.repeat(5 - (r.rating || 0));
+      return `
+        <div class="restaurant-card" onclick="focusRestaurant('${r.id}')">
+          <h3>${escapeHtml(r.name)}</h3>
+          ${r.category ? `<span class="category">${escapeHtml(r.category)}</span>` : ''}
+          <span class="stars">${stars}</span>
+          <div class="meta">📍 ${escapeHtml(r.address)}</div>
+          ${r.recommender ? `<div class="meta">👤 ${escapeHtml(r.recommender)}</div>` : ''}
+          ${r.note ? `<div class="meta">📝 ${escapeHtml(r.note.substring(0, 80))}${r.note.length > 80 ? '...' : ''}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function renderCategoryFilter() {
+    const sel = document.getElementById('categoryFilter');
+    const current = sel.value;
+    const cats = [...new Set(restaurants.map(r => r.category).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="">Minden kategória</option>' + 
+      cats.map(c => `<option value="${escapeHtml(c)}" ${c === current ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
+  }
+  
+  function focusRestaurant(id) {
+    const r = restaurants.find(x => x.id === id);
+    if (!r) return;
+    map.setView([r.lat, r.lng], 16);
+    markersLayer.eachLayer(m => {
+      if (Math.abs(m.getLatLng().lat - r.lat) < 0.0001 && Math.abs(m.getLatLng().lng - r.lng) < 0.0001) {
+        m.openPopup();
+      }
+    });
+  }
+  
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  
+  // === Export ===
+  function downloadFile(filename, content, mime) {
+    const blob = new Blob([content], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  
+  function exportJSON() {
+    if (restaurants.length === 0) { alert('Nincs exportálható adat!'); return; }
+    const ts = new Date().toISOString().slice(0,10);
+    downloadFile(`ettermek_${ts}.json`, JSON.stringify(restaurants, null, 2), 'application/json');
+  }
+  
+  function exportXML() {
+    if (restaurants.length === 0) { alert('Nincs exportálható adat!'); return; }
+    const xmlEscape = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<restaurants>\n';
+    restaurants.forEach(r => {
+      xml += '  <restaurant>\n';
+      xml += `    <id>${xmlEscape(r.id)}</id>\n`;
+      xml += `    <name>${xmlEscape(r.name)}</name>\n`;
+      xml += `    <address>${xmlEscape(r.address)}</address>\n`;
+      xml += `    <category>${xmlEscape(r.category)}</category>\n`;
+      xml += `    <rating>${r.rating || 0}</rating>\n`;
+      xml += `    <note>${xmlEscape(r.note)}</note>\n`;
+      xml += `    <recommender>${xmlEscape(r.recommender)}</recommender>\n`;
+      xml += `    <link>${xmlEscape(r.link)}</link>\n`;
+      xml += `    <lat>${r.lat}</lat>\n`;
+      xml += `    <lng>${r.lng}</lng>\n`;
+      xml += '  </restaurant>\n';
+    });
+    xml += '</restaurants>';
+    const ts = new Date().toISOString().slice(0,10);
+    downloadFile(`ettermek_${ts}.xml`, xml, 'application/xml');
+  }
+  
+  // === Import ===
+  async function importJSON(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!checkConfig()) return;
+    if (!confirm(`Importálod a "${file.name}" fájlt a Supabase adatbázisba?\nA meglévő (egyező ID-jú) éttermek felülíródnak.`)) {
+      event.target.value = '';
+      return;
+    }
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!Array.isArray(data)) throw new Error('A fájl nem tömböt tartalmaz!');
+      
+      setStatus(`⏳ ${data.length} étterem importálása...`, 'ok');
+      let ok = 0, fail = 0;
+      for (const r of data) {
+        try {
+          if (!r.id || !r.name || !r.lat || !r.lng) {
+            fail++;
+            continue;
+          }
+          await upsertRestaurant(r);
+          ok++;
+        } catch (e) {
+          console.error('Import hiba egy elemnél:', r, e);
+          fail++;
+        }
+      }
+      setStatus(`✅ Import kész: ${ok} sikeres, ${fail} sikertelen`, ok > 0 ? 'ok' : 'err');
+      await loadData();
+    } catch (e) {
+      setStatus('❌ Import hiba: ' + e.message, 'err');
+    }
+    event.target.value = '';
+  }
+  
+  // === Boot ===
+  initMap();
+  loadData();
+</script>

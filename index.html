@@ -387,7 +387,8 @@
   
   // === Init Map ===
   function initMap() {
-    map = L.map('map').setView([47.4979, 19.0402], 13);
+    // Kezdő nézet: Váci út 49. (DC Offices) - XIII. kerület, Árpád híd környéke
+    map = L.map('map').setView([47.5296671, 19.0658049], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 19

@@ -1,295 +1,869 @@
-<!-- Jófogás|Vatera étterem kalauz - Supabase verzió -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23ffd700'/%3E%3Ctext x='50%25' y='54%25' font-size='44' text-anchor='middle' dominant-baseline='middle'%3E%F0%9F%8D%B4%3C/text%3E%3C/svg%3E" />
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: #fffbe6; color: #222; }
-  
-  .header {
-    background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
-    color: #1a1a1a;
-    padding: 16px 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 10px;
-    border-bottom: 4px solid #1a1a1a;
-  }
-  .header h1 { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
-  .header h1 span { color: #c8102e; }
-  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  
-  .btn {
-    background: #1a1a1a;
-    color: #ffd700;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 700;
-    font-size: 13px;
-    transition: all 0.15s;
-  }
-  .btn:hover { background: #333; transform: translateY(-1px); }
-  .btn-primary { background: #c8102e; color: #fff; }
-  .btn-primary:hover { background: #a00d24; }
-  .btn-secondary { background: #fff; color: #1a1a1a; border: 2px solid #1a1a1a; }
-  .btn-danger { background: #c8102e; color: #fff; }
-  .btn-small { padding: 4px 10px; font-size: 12px; }
-  .admin-only { display: none; }
-  body.admin .admin-only { display: inline-block; }
-  
-  .main { display: flex; height: calc(100vh - 70px); }
-  .sidebar {
-    width: 380px;
-    background: #fff;
-    border-right: 3px solid #1a1a1a;
-    overflow-y: auto;
-    padding: 14px;
-  }
-  #map { flex: 1; }
-  
-  .filters {
-    margin-bottom: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .filters input, .filters select {
-    width: 100%;
-    padding: 8px 10px;
-    border: 2px solid #1a1a1a;
-    border-radius: 6px;
-    font-size: 14px;
-    background: #fffbe6;
-  }
-  .filters input:focus, .filters select:focus { outline: 2px solid #ffd700; }
-  
-  .restaurant-card {
-    background: #fffbe6;
-    border: 2px solid #1a1a1a;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .restaurant-card:hover { background: #ffd700; transform: translateX(-2px); box-shadow: 3px 3px 0 #1a1a1a; }
-  .restaurant-card h3 { font-size: 15px; margin-bottom: 4px; }
-  .restaurant-card .meta { font-size: 12px; color: #555; margin-bottom: 4px; }
-  .restaurant-card .category {
-    display: inline-block;
-    background: #c8102e;
-    color: #fff;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    margin-right: 4px;
-  }
-  .restaurant-card .stars { font-size: 14px; }
-  .restaurant-card .rating-count { font-size: 12px; color: #888; margin-left: 4px; }
+<!-- Jófogás · Vatera étterem kalauz · V2 dizájn -->
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Étterem kalauz</title>
 
-  /* Megjelenítő csillagok (átlag + fél-csillag támogatással) */
-  .rstars { display: inline-flex; vertical-align: middle; }
-  .rs {
-    position: relative;
-    display: inline-block;
-    color: #ddd;
-    line-height: 1;
-  }
-  .rs.full { color: #ffb700; }
-  .rs.half::before {
-    content: '\2605';
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 50%;
-    overflow: hidden;
-    color: #ffb700;
-  }
-  
-  .empty-state {
-    text-align: center;
-    padding: 30px 15px;
-    color: #888;
-    font-size: 14px;
-  }
-  
-  /* Modal */
-  .modal-bg {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.6);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    padding: 15px;
-  }
-  .modal-bg.active { display: flex; }
-  .modal {
-    background: #fff;
-    border: 3px solid #1a1a1a;
-    border-radius: 10px;
-    padding: 22px;
-    max-width: 500px;
-    width: 100%;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 6px 6px 0 #ffd700;
-  }
-  .modal h2 { margin-bottom: 16px; color: #c8102e; }
-  .modal label { display: block; margin-top: 10px; font-weight: 700; font-size: 13px; margin-bottom: 4px; }
-  .modal input, .modal textarea, .modal select {
-    width: 100%;
-    padding: 8px 10px;
-    border: 2px solid #1a1a1a;
-    border-radius: 6px;
-    font-size: 14px;
-    font-family: inherit;
-  }
-  .modal textarea { min-height: 60px; resize: vertical; }
-  .modal-actions { margin-top: 18px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-  
-  .stars-input { display: flex; gap: 4px; }
-  .star { font-size: 28px; cursor: pointer; color: #ddd; transition: color 0.1s; }
-  .star.active { color: #ffb700; }
-  
-  .popup-content h3 { margin-bottom: 6px; color: #c8102e; }
-  .popup-content p { font-size: 13px; margin-bottom: 4px; }
-  .popup-content .popup-actions { margin-top: 8px; display: flex; gap: 6px; }
-  
-  .info-banner {
-    background: #fffbe6;
-    border: 2px dashed #1a1a1a;
-    padding: 10px;
-    border-radius: 6px;
-    font-size: 12px;
-    margin-bottom: 12px;
-    color: #555;
-  }
-  
-  .status-banner {
-    padding: 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    margin-bottom: 12px;
-    font-weight: 600;
-  }
-  .status-ok { background: #d4f4d4; border: 2px solid #2a8a2a; color: #1a5a1a; }
-  .status-err { background: #ffd4d4; border: 2px solid #c8102e; color: #8a0a1a; }
-  
-  .loading {
-    text-align: center;
-    padding: 12px;
-    color: #888;
-    font-size: 13px;
-  }
-  
-  @media (max-width: 768px) {
-    .main { flex-direction: column; height: calc(100vh - 130px); }
-    .sidebar { width: 100%; max-height: 40vh; border-right: none; border-bottom: 3px solid #1a1a1a; }
-    .header h1 { font-size: 18px; }
-  }
-</style>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23FAFAF6'/%3E%3Ctext x='50%25' y='62%25' font-size='40' text-anchor='middle' font-family='Georgia' font-style='italic' fill='%23EC6B2C'%3Ek%3C/text%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet" />
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 
-<div class="header">
-  <h1>🍴 Jófogás<span>|</span>Vatera étterem kalauz</h1>
-  <div class="header-actions">
-    <button class="btn btn-primary" onclick="openAddModal()">➕ Új étterem</button>
-    <button class="btn btn-secondary" onclick="loadData()">🔄 Frissítés</button>
-    <button class="btn btn-secondary admin-only" onclick="exportJSON()">📥 JSON</button>
-    <button class="btn btn-secondary admin-only" onclick="exportXML()">📥 XML</button>
-    <button class="btn btn-secondary admin-only" onclick="document.getElementById('importFile').click()">📤 Import</button>
-    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON(event)" />
-  </div>
-</div>
+<style>
+  :root {
+    --bg: #FAFAF6;
+    --surface: #FFFFFF;
+    --surface-alt: #F1EFEA;
+    --ink: #14181F;
+    --muted: #6F7682;
+    --line: rgba(20,24,31,0.10);
+    --primary: #EC6B2C;
+    --primary-dk: #C5551E;
+    --accent: #1F3F8A;
+    --accent-dk: #142B62;
+    --serif: "Newsreader", "DM Serif Display", Georgia, serif;
+    --sans: "DM Sans", "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
 
-<div class="main">
-  <div class="sidebar">
-    <div id="statusBanner"></div>
-    <div class="info-banner">
-      💡 Kattints a térképre új étterem hozzáadásához, vagy használd a "➕ Új étterem" gombot!
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    font-size: 14px;
+    overflow: hidden;
+  }
+
+  /* ── App shell ─────────────────────────────────────────── */
+  .app { display: flex; flex-direction: column; height: 100vh; position: relative; }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+    padding: 14px 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: relative;
+    min-height: 80px;
+    flex-shrink: 0;
+  }
+  .header::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary) 60%, #B6B7BB 72%, #B6B7BB 100%);
+  }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  .admin-tools {
+    display: none;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 6px;
+    background: var(--bg);
+    border-radius: 10px;
+    border: 1px dashed var(--line);
+    margin-right: 4px;
+  }
+  body.admin .admin-tools { display: inline-flex; }
+
+  .admin-badge {
+    font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase;
+    font-weight: 700; color: var(--muted); padding: 0 6px;
+  }
+
+  .icon-btn {
+    width: 32px; height: 32px; padding: 0; border: 0; background: transparent;
+    border-radius: 8px; cursor: pointer; color: var(--ink);
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .icon-btn:hover { background: var(--surface); }
+  .icon-btn svg { display: block; }
+
+  .btn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 10px;
+    padding: 9px 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: transform 0.1s, box-shadow 0.15s, background 0.15s;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .btn-ghost:hover { background: var(--surface-alt); }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border: 0;
+    padding: 10px 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(236,107,44,0.30), inset 0 1px 0 rgba(255,255,255,0.18);
+  }
+  .btn-primary:hover { background: var(--primary-dk); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 9px 16px;
+    font-weight: 500;
+  }
+  .btn-secondary:hover { background: var(--surface-alt); }
+  .btn-danger {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid rgba(236,107,44,0.30);
+    font-weight: 600;
+  }
+  .btn-danger:hover { background: rgba(236,107,44,0.08); }
+
+  /* ── Branding zone (Zsozsó + címer overlap) ─────────────── */
+  .branding {
+    position: absolute;
+    top: 6px;
+    left: 22px;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    pointer-events: none;
+  }
+  .branding img {
+    height: 168px;
+    width: auto;
+    display: block;
+    flex-shrink: 0;
+    filter: drop-shadow(0 8px 18px rgba(20,24,31,0.18));
+    pointer-events: auto;
+  }
+  .branding .titles { padding-top: 14px; pointer-events: auto; }
+  .brand-title {
+    font-family: var(--serif);
+    font-size: 34px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .brand-title em { font-style: italic; color: var(--primary); }
+  .brand-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .brand-sub .dot { color: var(--accent); }
+
+  /* ── Main layout ───────────────────────────────────────── */
+  .main { flex: 1; display: flex; min-height: 0; }
+
+  .sidebar {
+    width: 400px;
+    flex-shrink: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-right: 1px solid var(--line);
+  }
+
+  /* Status banner */
+  #statusBanner { padding: 0 20px; margin-top: 102px; }
+  #statusBanner:empty { display: none; }
+  .status-banner {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 4px;
+  }
+  .status-ok { background: rgba(31,63,138,0.08); color: var(--accent); border: 1px solid rgba(31,63,138,0.2); }
+  .status-err { background: rgba(236,107,44,0.10); color: var(--primary-dk); border: 1px solid rgba(236,107,44,0.30); }
+
+  /* Sidebar top: search + chips */
+  .sidebar-top {
+    padding: 16px 20px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  /* When no status banner: keep the original 102px gap to make room for mascot */
+  #statusBanner:empty + .sidebar-top { padding-top: 102px; }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    padding: 11px 14px;
+    border-radius: 12px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    border: 1px solid var(--line);
+  }
+  .search-box input {
+    flex: 1;
+    border: 0;
+    outline: none;
+    background: transparent;
+    font-size: 14px;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  .search-box .clear-btn {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 2px;
+    font-size: 14px;
+  }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 6px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+  }
+  .chip:hover { background: var(--surface-alt); }
+  .chip.active {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+  .chip .count { font-weight: 700; opacity: 0.6; margin-left: 2px; }
+
+  /* Heading row */
+  .list-heading {
+    padding: 8px 22px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .list-heading .count {
+    font-family: var(--serif);
+    font-size: 28px;
+    line-height: 1;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .list-heading .label { font-size: 13px; color: var(--muted); margin-left: 6px; }
+  .list-heading .sort-hint {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+
+  /* Card list */
+  .card-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .empty-state {
+    padding: 40px 14px;
+    text-align: center;
+    color: var(--muted);
+    font-style: italic;
+    font-family: var(--serif);
+    font-size: 16px;
+  }
+
+  .card {
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.03);
+  }
+  .card:hover {
+    border-color: rgba(236,107,44,0.4);
+    box-shadow: 0 4px 14px rgba(20,24,31,0.06);
+  }
+  .card.active {
+    border-color: var(--primary);
+    box-shadow: 0 6px 18px rgba(236,107,44,0.15);
+    transform: translateY(-1px);
+  }
+  .card-top { display: flex; align-items: flex-start; gap: 12px; }
+  .card-icon {
+    width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px;
+    background: var(--bg); color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card-body { flex: 1; min-width: 0; }
+  .card-name {
+    font-family: var(--serif);
+    font-size: 19px;
+    line-height: 1.15;
+    margin: 0;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .card-rating-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .card-rating-value { font-size: 12px; color: var(--ink); font-weight: 700; }
+  .card-rating-count { font-size: 12px; color: var(--muted); }
+  .card-no-rating { font-size: 12px; color: var(--muted); font-style: italic; }
+  .card-cat-tag {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .card-meta {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .card-meta-row { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+  .card-meta-row svg { flex-shrink: 0; margin-top: 2px; }
+  .card-recommender {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .recommender-avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .recommender-name {
+    color: var(--ink);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  /* Dot rating */
+  .dots { display: inline-flex; gap: 4px; align-items: center; vertical-align: middle; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(20,24,31,0.10);
+    position: relative;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .dot.lg { width: 10px; height: 10px; }
+  .dot .fill {
+    position: absolute; inset: 0;
+    background: var(--primary);
+    border-radius: 50%;
+  }
+  .dot .fill.half { clip-path: inset(0 50% 0 0); }
+
+  /* Sidebar tip footer */
+  .sidebar-tip {
+    padding: 12px 20px;
+    border-top: 1px solid var(--line);
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* Map */
+  .map-pane { flex: 1; position: relative; background: #ecebe7; }
+  #map { width: 100%; height: 100%; }
+
+  .map-chip {
+    position: absolute;
+    top: 14px; right: 14px;
+    z-index: 500;
+    background: var(--surface);
+    padding: 8px 12px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(20,24,31,0.12);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .map-chip .pill {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--primary);
+  }
+  .map-chip .sep { color: var(--muted); }
+  .map-chip .area { color: var(--muted); }
+
+  /* Leaflet polish */
+  .leaflet-container { font-family: inherit; background: #ecebe7; }
+  .leaflet-control-zoom a {
+    border-radius: 8px !important; border: 0 !important;
+    background: rgba(255,255,255,0.95) !important;
+    color: var(--ink) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10) !important;
+    font-family: inherit !important;
+    width: 30px !important; height: 30px !important; line-height: 30px !important;
+    margin: 2px 0;
+  }
+  .leaflet-control-zoom { border: 0 !important; box-shadow: none !important; }
+  .leaflet-bar { box-shadow: none !important; }
+  .leaflet-control-attribution {
+    background: rgba(255,255,255,0.85) !important;
+    color: var(--muted) !important;
+    font-size: 10px !important;
+    padding: 2px 8px !important;
+    border-radius: 6px !important;
+    backdrop-filter: blur(4px);
+  }
+  .leaflet-control-attribution a { color: var(--ink) !important; }
+  .v2-marker-wrap { background: transparent !important; border: 0 !important; }
+
+  /* Marker tooltip */
+  .v2-tip.leaflet-tooltip {
+    background: var(--ink) !important;
+    color: #FFFFFF !important;
+    border: 0 !important;
+    box-shadow: 0 6px 20px rgba(20,24,31,0.30) !important;
+    font-family: var(--sans) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+    letter-spacing: 0.005em;
+    white-space: nowrap;
+  }
+  .v2-tip.leaflet-tooltip-top:before { border-top-color: var(--ink) !important; }
+
+  /* Marker popup (rich) */
+  .leaflet-popup-content-wrapper {
+    border-radius: 14px !important;
+    box-shadow: 0 16px 40px rgba(20,24,31,0.22) !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+  .leaflet-popup-content { margin: 0 !important; min-width: 240px; font-family: var(--sans); }
+  .leaflet-popup-tip { box-shadow: 0 4px 8px rgba(20,24,31,0.16); }
+  .popup-card { padding: 14px 16px 12px; color: var(--ink); }
+  .popup-card .pcat {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .popup-card h3 {
+    font-family: var(--serif);
+    font-size: 20px;
+    line-height: 1.15;
+    margin: 0 0 8px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .popup-card .prating { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 12px; }
+  .popup-card .prating .v { font-weight: 700; color: var(--ink); }
+  .popup-card .prating .c { color: var(--muted); }
+  .popup-card .pmeta { font-size: 12px; color: var(--muted); margin: 4px 0; display: flex; gap: 6px; align-items: flex-start; line-height: 1.5; }
+  .popup-card .pmeta svg { flex-shrink: 0; margin-top: 2px; }
+  .popup-card .pactions { margin-top: 12px; display: flex; gap: 8px; }
+  .popup-card .pactions .btn { padding: 7px 12px; font-size: 12px; }
+
+  /* ── Modal ─────────────────────────────────────────────── */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(20,24,31,0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 24px;
+    backdrop-filter: blur(4px);
+  }
+  .modal-bg.active { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 20px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 24px 60px rgba(20,24,31,0.30);
+    overflow: hidden;
+  }
+  .modal-stripe { display: flex; height: 5px; flex-shrink: 0; }
+  .modal-stripe .o { width: 68%; background: var(--primary); }
+  .modal-stripe .g { flex: 1; background: #B6B7BB; }
+
+  .modal-header {
+    padding: 20px 26px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .modal-icon {
+    width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+    background: var(--surface-alt); color: var(--primary);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-titles { flex: 1; min-width: 0; }
+  .modal-eyebrow {
+    font-size: 11px; color: var(--muted); letter-spacing: 0.1em;
+    text-transform: uppercase; font-weight: 600;
+  }
+  .modal-title {
+    margin: 4px 0 0;
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+  }
+  .modal-avg-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; }
+  .modal-avg-row .v { font-weight: 700; color: var(--ink); font-size: 13px; }
+  .modal-avg-row .c { color: var(--muted); }
+  .modal-close {
+    background: transparent; border: 0; width: 32px; height: 32px; border-radius: 10px;
+    cursor: pointer; font-size: 18px; color: var(--muted); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-close:hover { background: var(--surface-alt); color: var(--ink); }
+
+  .modal-body { padding: 18px 26px 8px; overflow-y: auto; flex: 1; }
+  .field { margin-bottom: 14px; }
+  .field-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .field-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .input, .textarea {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input:focus, .textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(236,107,44,0.10);
+  }
+  .textarea { resize: vertical; min-height: 70px; }
+  .loading-inline { padding: 6px 0; color: var(--muted); font-size: 12px; }
+
+  .cat-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px;
+    background: var(--bg);
+  }
+  .cat-pill {
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 6px 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+  }
+  .cat-pill:hover { background: var(--surface-alt); }
+  .cat-pill.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  .rating-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rating-btn {
+    width: 30px; height: 30px; padding: 0; border-radius: 50%;
+    border: 0; cursor: pointer;
+    background: rgba(20,24,31,0.08);
+    transition: transform 0.1s, background 0.15s;
+  }
+  .rating-btn:hover:not(:disabled) { transform: scale(1.08); }
+  .rating-btn:disabled { cursor: not-allowed; opacity: 0.5; }
+  .rating-btn.filled { background: var(--primary); }
+  .rating-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+  .rating-hint.disabled { font-style: italic; }
+
+  .others-box {
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .others-row { display: flex; align-items: center; gap: 8px; }
+  .others-row .name { font-size: 13px; color: var(--ink); }
+  .others-row .val { margin-left: auto; font-size: 12px; color: var(--muted); font-weight: 600; }
+
+  .modal-footer {
+    padding: 14px 22px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  .modal-footer .spacer { flex: 1; }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .main { flex-direction: column; }
+    .sidebar {
+      width: 100%;
+      max-height: 50vh;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+    }
+    .branding img { height: 120px; }
+    .brand-title { font-size: 26px; }
+    .brand-sub { font-size: 10px; }
+    #statusBanner { margin-top: 72px; }
+    #statusBanner:empty + .sidebar-top { padding-top: 72px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="header">
+    <div class="header-actions">
+      <div class="admin-tools">
+        <span class="admin-badge">Admin</span>
+        <button class="icon-btn" title="Export JSON" onclick="exportJSON()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4c-1.5 0-2 1-2 2v4c0 1.5-.5 2-2 2 1.5 0 2 .5 2 2v4c0 1 .5 2 2 2"/><path d="M17 4c1.5 0 2 1 2 2v4c0 1.5.5 2 2 2-1.5 0-2 .5-2 2v4c0 1-.5 2-2 2"/></svg>
+        </button>
+        <button class="icon-btn" title="Export XML" onclick="exportXML()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7l-5 5 5 5"/><path d="M15 7l5 5-5 5"/><path d="M13 6l-2 12"/></svg>
+        </button>
+        <button class="icon-btn" title="Import" onclick="document.getElementById('importFile').click()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>
+        </button>
+        <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importJSON(event)" />
+      </div>
+      <button class="btn btn-ghost" onclick="loadData()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+        Frissítés
+      </button>
+      <button class="btn btn-primary" onclick="openAddModal()">＋ Új étterem</button>
     </div>
-    <div class="filters">
-      <input type="text" id="searchInput" placeholder="🔍 Keresés név vagy cím alapján..." oninput="renderList()" />
-      <select id="categoryFilter" onchange="renderList()">
-        <option value="">Minden kategória</option>
-      </select>
+  </header>
+
+  <div class="branding">
+    <img src="assets/zsozso.png" alt="Zsozsó — a Jófogás kabalája, pizzaséfként" />
+    <div class="titles">
+      <div class="brand-title">Étterem <em>kalauz</em></div>
+      <div class="brand-sub">Jófogás <span class="dot">·</span> Vatera <span class="dot">·</span> Budapest XIII.</div>
     </div>
-    <div id="restaurantList"></div>
   </div>
-  <div id="map"></div>
+
+  <div class="main">
+    <aside class="sidebar">
+      <div id="statusBanner"></div>
+      <div class="sidebar-top">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F7682" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.5-4.5"/></svg>
+          <input type="text" id="searchInput" placeholder="Mire vágysz ma?" oninput="renderList()" />
+          <button class="clear-btn" id="clearSearch" title="Törlés" style="display:none;" onclick="clearSearch()">✕</button>
+        </div>
+        <div class="chips" id="categoryChips"></div>
+      </div>
+      <div class="list-heading">
+        <div>
+          <span class="count" id="listCount">0</span>
+          <span class="label" id="listLabel">hely a környéken</span>
+        </div>
+        <div class="sort-hint">Átlag szerint</div>
+      </div>
+      <div class="card-list" id="restaurantList"></div>
+      <div class="sidebar-tip">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#142B62" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M4.93 4.93l1.41 1.41"/><path d="M17.66 17.66l1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><circle cx="12" cy="12" r="5"/></svg>
+        <span>Kattints a térképre új helyhez · a markerre a részletekért</span>
+      </div>
+    </aside>
+    <div class="map-pane">
+      <div id="map"></div>
+      <div class="map-chip">
+        <span class="pill"></span>
+        <span style="font-weight:600;" id="mapChipCount">0 étterem</span>
+        <span class="sep">·</span>
+        <span class="area">XIII. Váci út</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Add/Edit Modal -->
 <div class="modal-bg" id="formModal">
   <div class="modal">
-    <h2 id="modalTitle">➕ Új étterem hozzáadása</h2>
-    <input type="hidden" id="editId" />
-    <input type="hidden" id="editLat" />
-    <input type="hidden" id="editLng" />
-    
-    <label>Név *</label>
-    <input type="text" id="fName" placeholder="pl. Menza Étterem" />
-    
-    <label>Cím *</label>
-    <input type="text" id="fAddress" placeholder="pl. Budapest, Liszt Ferenc tér 2." />
-    <div class="loading" id="geocodeLoading" style="display:none;">📍 Cím keresése a térképen...</div>
-    
-    <label>Kategória</label>
-    <select id="fCategory">
-      <option value="">— válassz —</option>
-      <option value="magyar">magyar</option>
-      <option value="olasz">olasz</option>
-      <option value="ázsiai">ázsiai</option>
-      <option value="pizzéria">pizzéria</option>
-      <option value="gyors-étterem">gyors-étterem</option>
-      <option value="kávézó">kávézó</option>
-      <option value="menüs">menüs</option>
-      <option value="hamburger">hamburger</option>
-      <option value="gyros / kebab">gyros / kebab</option>
-      <option value="vegetáriánus">vegetáriánus</option>
-      <option value="reggeliző">reggeliző</option>
-      <option value="cukrászda">cukrászda</option>
-      <option value="nemzetközi">nemzetközi</option>
-      <option value="étterem">étterem</option>
-      <option value="__other__">Egyéb…</option>
-    </select>
-    <input type="text" id="fCategoryOther" placeholder="Add meg a kategóriát" style="display:none; margin-top:6px;" />
-
-    <label>Te (ki értékel?)</label>
-    <input type="text" id="fRater" placeholder="pl. Németh Zoli" />
-    <div style="font-size:11px; color:#888; margin-top:2px;">A nevedet eltároljuk a böngészőben — csak egyszer kell beírni.</div>
-
-    <label>Értékelésed</label>
-    <div class="stars-input" id="starsInput">
-      <span class="star" data-v="1">★</span>
-      <span class="star" data-v="2">★</span>
-      <span class="star" data-v="3">★</span>
-      <span class="star" data-v="4">★</span>
-      <span class="star" data-v="5">★</span>
-      <span id="myRatingHint" style="font-size:12px; color:#888; margin-left:8px; align-self:center;"></span>
+    <div class="modal-stripe"><div class="o"></div><div class="g"></div></div>
+    <div class="modal-header">
+      <div class="modal-icon" id="modalIcon"></div>
+      <div class="modal-titles">
+        <div class="modal-eyebrow" id="modalEyebrow">Új étterem</div>
+        <h2 class="modal-title" id="modalTitle" style="display:none;"></h2>
+        <div class="modal-avg-row" id="modalAvgRow" style="display:none;">
+          <span class="dots" id="modalAvgDots"></span>
+          <span class="v" id="modalAvgValue"></span>
+          <span class="c" id="modalAvgCount"></span>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
-    <div id="ratingsBreakdown" style="margin-top:8px; font-size:12px; color:#444;"></div>
-    
-    <label>Megjegyzés / leírás</label>
-    <textarea id="fNote" placeholder="Mit érdemes rendelni? Mi a véleményed?"></textarea>
-    
-    <label>Ki ajánlja?</label>
-    <input type="text" id="fRecommender" placeholder="pl. Kovács Béla" />
-    
-    <label>Link (weboldal, Google Maps, stb.)</label>
-    <input type="url" id="fLink" placeholder="https://..." />
-    
-    <div class="modal-actions">
+
+    <div class="modal-body">
+      <input type="hidden" id="editId" />
+      <input type="hidden" id="editLat" />
+      <input type="hidden" id="editLng" />
+
+      <div class="field" id="nameField">
+        <label class="field-label">Név *</label>
+        <input class="input" type="text" id="fName" placeholder="pl. Menza Étterem" />
+      </div>
+
+      <div class="field">
+        <label class="field-label">Cím *</label>
+        <input class="input" type="text" id="fAddress" placeholder="pl. Budapest, Liszt Ferenc tér 2." />
+        <div class="loading-inline" id="geocodeLoading" style="display:none;">📍 Cím keresése a térképen…</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Kategória</label>
+        <div class="cat-wrap" id="categoryPills"></div>
+        <input class="input" type="text" id="fCategoryOther" placeholder="Add meg a kategóriát" style="display:none; margin-top:8px;" />
+      </div>
+
+      <div class="field">
+        <label class="field-label">Te (ki értékel?)</label>
+        <input class="input" type="text" id="fRater" placeholder="pl. Németh Zoli" />
+        <div class="field-hint">A nevedet a böngészőben tároljuk — csak egyszer kell beírni.</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Értékelésed</label>
+        <div class="rating-input" id="ratingInput">
+          <button type="button" class="rating-btn" data-v="1"></button>
+          <button type="button" class="rating-btn" data-v="2"></button>
+          <button type="button" class="rating-btn" data-v="3"></button>
+          <button type="button" class="rating-btn" data-v="4"></button>
+          <button type="button" class="rating-btn" data-v="5"></button>
+          <span class="rating-hint" id="ratingHint"></span>
+        </div>
+      </div>
+
+      <div class="field" id="othersField" style="display:none;">
+        <label class="field-label" id="othersLabel">Mások értékelése</label>
+        <div class="others-box" id="othersBox"></div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Megjegyzés / leírás</label>
+        <textarea class="textarea" id="fNote" placeholder="Mit érdemes rendelni? Mi a véleményed?"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="field-label">Ki ajánlja?</label>
+        <input class="input" type="text" id="fRecommender" placeholder="pl. Kovács Béla" />
+      </div>
+
+      <div class="field">
+        <label class="field-label">Link (weboldal, Google Maps, …)</label>
+        <input class="input" type="url" id="fLink" placeholder="https://…" />
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="deleteBtn" onclick="deleteRestaurant()" style="display:none;">Törlés</button>
+      <span class="spacer"></span>
       <button class="btn btn-secondary" onclick="closeModal()">Mégse</button>
-      <button class="btn btn-danger btn-small" id="deleteBtn" onclick="deleteRestaurant()" style="display:none;">🗑️ Törlés</button>
-      <button class="btn btn-primary" onclick="saveRestaurant()">💾 Mentés</button>
+      <button class="btn btn-primary" onclick="saveRestaurant()">Mentés</button>
     </div>
   </div>
 </div>
@@ -302,12 +876,8 @@
   const SUPABASE_URL = window.APP_CONFIG?.SUPABASE_URL || 'MISSING';
   const SUPABASE_PUBLISHABLE_KEY = window.APP_CONFIG?.SUPABASE_PUBLISHABLE_KEY || 'MISSING';
   const TABLE_NAME = 'restaurants';
-
-  // Import/Export gombok csak akkor látszanak, ha az URL hash-ben szerepel
-  // ez a token, pl. https://example.com/#admin=kacsa-2026
-  // Üresre állítva minden gomb látszik mindenkinek.
-  const ADMIN_TOKEN = 'kacsa-2026';
   const RATINGS_TABLE = 'restaurant_ratings';
+  const ADMIN_TOKEN = 'kacsa-2026';
 
   function applyAdminMode() {
     const hash = window.location.hash.replace(/^#/, '');
@@ -318,15 +888,48 @@
   }
   applyAdminMode();
   window.addEventListener('hashchange', applyAdminMode);
-  // ============================================================
-  
+
+  // === Category list (előre definiált) + meta ===
+  const CATEGORY_LIST = [
+    'magyar', 'olasz', 'ázsiai', 'pizzéria', 'gyors-étterem', 'kávézó',
+    'menüs', 'hamburger', 'gyros / kebab', 'vegetáriánus', 'reggeliző',
+    'cukrászda', 'nemzetközi', 'étterem',
+  ];
+
+  // SVG ikon-katalógus (path-ek), V2-ből portolva
+  const ICON_PATHS = {
+    'magyar': '<path d="M9 6c0-1.5 1-2.5 2.5-2.5S14 4.5 14 6"/><path d="M11 6c.5-.5 1-.5 1.5 0"/><path d="M10.5 6c-3.5 1.5-6 5-6 9 0 3 2 5 4.5 5 4 0 8-4 8-9 0-3-2-5-4.5-5-.5 0-1 0-2 0Z"/>',
+    'olasz':  '<path d="M3 13h18a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8Z"/><path d="M7 13c0-3 2-5 5-5"/><path d="M10 13c0-2 1.5-3.5 3.5-3.5"/><path d="M13 13c0-1.5 1-2.5 2.5-2.5"/><circle cx="16.5" cy="6" r="1"/>',
+    'ázsiai': '<path d="M3 14h14a7 7 0 0 1-7 7H10a7 7 0 0 1-7-7Z"/><path d="M15 3l5 5"/><path d="M18 3l4 4"/>',
+    'pizzéria': '<path d="M12 3 4 19a1 1 0 0 0 1 1.5l14-1a1 1 0 0 0 .8-1.4Z"/><circle cx="11" cy="11" r="1.1" fill="@@FILL@@"/><circle cx="14" cy="14" r="1.1" fill="@@FILL@@"/><circle cx="9" cy="16" r="1.1" fill="@@FILL@@"/>',
+    'gyors-étterem': '<path d="M6 10h12l-1.5 10a1 1 0 0 1-1 .9H8.5a1 1 0 0 1-1-.9Z"/><path d="M6 10v-2a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2"/><path d="M9 7V4"/><path d="M12 7V3"/><path d="M15 7V5"/>',
+    'kávézó': '<path d="M4 10h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z"/><path d="M17 12h2a2.5 2.5 0 0 1 0 5h-2"/><path d="M8 6c0-1 1-1.5 1-2.5S8 2 8 1"/><path d="M12 6c0-1 1-1.5 1-2.5S12 2 12 1"/>',
+    'menüs': '<path d="M8 3v8a2 2 0 0 1-2 2H5v8"/><path d="M8 3v18"/><path d="M11 3v6a2 2 0 0 0 2 2"/><path d="M17 3c-1.5 0-3 1.8-3 5s1.5 5 3 5v8"/>',
+    'hamburger': '<path d="M3 11a9 9 0 0 1 18 0Z"/><path d="M3 14h18"/><path d="M3 17h18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z"/>',
+    'gyros / kebab': '<path d="M6 4h12l-2 16a2 2 0 0 1-2 1.5h-4a2 2 0 0 1-2-1.5Z"/><path d="M7 9h10"/><path d="M8 14h8"/>',
+    'vegetáriánus': '<path d="M20 4c0 8-4 14-12 16-1-7 3-14 12-16Z"/><path d="M8 20c2-6 5-9 10-12"/>',
+    'reggeliző': '<path d="M3 18 8 7c.5-1 2-1.5 3-1l8 4c1 .5 1.5 2 1 3l-2 5c-.4 1-1.5 1.5-2.5 1.5Z"/><path d="M8 9l4 8"/><path d="M12 8l3 7"/><path d="M15 7l2 6"/>',
+    'cukrászda': '<path d="M4 21h16v-7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3Z"/><path d="M4 15h16"/><path d="M9 8V5"/><path d="M12 8V4"/><path d="M15 8V5"/>',
+    'nemzetközi': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z"/>',
+    'étterem': '<path d="M3 18h18"/><path d="M4 18a8 8 0 0 1 16 0"/><path d="M12 6V3"/><path d="M10 3h4"/>',
+    'default': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
+  };
+
+  function categoryIconSVG(cat, size, color) {
+    const body = (ICON_PATHS[cat] || ICON_PATHS.default).replaceAll('@@FILL@@', color || 'currentColor');
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="${color || 'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;">${body}</svg>`;
+  }
+
   // === State ===
   let restaurants = [];
-  let ratingsByRestaurant = {};   // id -> [{ rater, value }, ...]
+  let ratingsByRestaurant = {};
   let map, markersLayer;
-  let currentRating = 0;          // a modálban a "saját" csillag, amit épp állítasz
+  let currentRating = 0;
+  let currentCategory = '';
+  let activeId = null;
   let tempMarker = null;
   let myRaterName = localStorage.getItem('rater_name') || '';
+  let selectedFilterCategory = '';
 
   // === Rating helpers ===
   function averageRating(restaurantId) {
@@ -336,14 +939,17 @@
     return { avg: sum / list.length, count: list.length };
   }
 
-  function renderStarsHTML(value, size) {
-    const px = size || 14;
+  function renderDotsHTML(value, size) {
     const rounded = Math.round((+value || 0) * 2) / 2;
-    let html = `<span class="rstars" style="font-size:${px}px;">`;
+    const cls = size === 'lg' ? 'dot lg' : 'dot';
+    let html = '<span class="dots">';
     for (let i = 1; i <= 5; i++) {
-      if (rounded >= i)            html += '<span class="rs full">★</span>';
-      else if (rounded >= i - 0.5) html += '<span class="rs half">★</span>';
-      else                         html += '<span class="rs">★</span>';
+      const isFull = rounded >= i;
+      const isHalf = !isFull && rounded >= i - 0.5;
+      html += `<span class="${cls}">`;
+      if (isFull) html += '<span class="fill"></span>';
+      else if (isHalf) html += '<span class="fill half"></span>';
+      html += '</span>';
     }
     html += '</span>';
     return html;
@@ -355,7 +961,11 @@
     const mine = list.find(r => r.rater.toLowerCase() === myRaterName.toLowerCase());
     return mine ? mine.value : 0;
   }
-  
+
+  function initials(name) {
+    return String(name || '').split(/\s+/).map(p => p[0] || '').join('').slice(0, 2).toUpperCase();
+  }
+
   // === Status ===
   function setStatus(msg, type) {
     const banner = document.getElementById('statusBanner');
@@ -363,7 +973,7 @@
     banner.innerHTML = `<div class="status-banner status-${type}">${msg}</div>`;
     if (type === 'ok') setTimeout(() => banner.innerHTML = '', 3000);
   }
-  
+
   // === Supabase API ===
   function checkConfig() {
     if (SUPABASE_URL === 'MISSING' || SUPABASE_PUBLISHABLE_KEY === 'MISSING' ||
@@ -373,7 +983,7 @@
     }
     return true;
   }
-  
+
   async function supabaseRequest(method, path, body) {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
       method,
@@ -392,14 +1002,13 @@
     if (res.status === 204) return null;
     return res.json();
   }
-  
+
   // === Load / Save / Delete ===
   async function loadData() {
     if (!checkConfig()) return;
     try {
       const [data, ratingsRows] = await Promise.all([
         supabaseRequest('GET', `${TABLE_NAME}?select=*`),
-        // ratings tábla opcionális: ha még nem létezik, üres listával folytatunk
         supabaseRequest('GET', `${RATINGS_TABLE}?select=restaurant_id,rater,value`)
           .catch(e => {
             console.warn('restaurant_ratings tábla még nem létezik vagy nem elérhető — futtasd az SQL-t a SETUP.md-ből.', e.message);
@@ -411,7 +1020,7 @@
         name: row.name,
         address: row.address,
         category: row.category,
-        rating: row.rating,            // legacy, már nem írjuk
+        rating: row.rating,
         note: row.note,
         recommender: row.recommender,
         link: row.link,
@@ -423,7 +1032,6 @@
       for (const r of (ratingsRows || [])) {
         (ratingsByRestaurant[r.restaurant_id] ||= []).push({ rater: r.rater, value: r.value });
       }
-      // rendezés: átlag csökkenő, aztán név
       restaurants.sort((a, b) => {
         const aa = averageRating(a.id).avg, bb = averageRating(b.id).avg;
         if (bb !== aa) return bb - aa;
@@ -445,7 +1053,6 @@
       value: value,
       updated_at: new Date().toISOString()
     };
-    // PostgREST upsert a (restaurant_id, rater) unique kulcsra
     await fetch(`${SUPABASE_URL}/rest/v1/${RATINGS_TABLE}?on_conflict=restaurant_id,rater`, {
       method: 'POST',
       headers: {
@@ -465,7 +1072,7 @@
       `${RATINGS_TABLE}?restaurant_id=eq.${encodeURIComponent(restaurantId)}&rater=eq.${encodeURIComponent(myRaterName)}`
     );
   }
-  
+
   async function upsertRestaurant(r) {
     const payload = {
       id: r.id,
@@ -480,7 +1087,6 @@
       lng: r.lng,
       updated_at: new Date().toISOString()
     };
-    // Check if exists
     const existing = restaurants.find(x => x.id === r.id);
     if (existing) {
       await supabaseRequest('PATCH', `${TABLE_NAME}?id=eq.${encodeURIComponent(r.id)}`, payload);
@@ -488,27 +1094,33 @@
       await supabaseRequest('POST', TABLE_NAME, payload);
     }
   }
-  
+
   async function deleteFromDB(id) {
     await supabaseRequest('DELETE', `${TABLE_NAME}?id=eq.${encodeURIComponent(id)}`);
   }
-  
+
   // === Init Map ===
   function initMap() {
-    // Kezdő nézet: Váci út 49. (DC Offices) - XIII. kerület, Árpád híd környéke
-    map = L.map('map').setView([47.5296671, 19.0658049], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 19
+    map = L.map('map', {
+      zoomControl: false,
+      attributionControl: true,
+      scrollWheelZoom: true,
+    }).setView([47.5296671, 19.0658049], 15);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap, © CARTO',
+      maxZoom: 19, subdomains: 'abcd'
     }).addTo(map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
     markersLayer = L.layerGroup().addTo(map);
-    
+
     map.on('click', function(e) {
       if (document.getElementById('formModal').classList.contains('active')) return;
       openAddModal(e.latlng.lat, e.latlng.lng);
     });
   }
-  
+
   // === Geocoding ===
   async function geocodeAddress(address) {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
@@ -519,7 +1131,7 @@
     }
     return null;
   }
-  
+
   async function reverseGeocode(lat, lng) {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=hu`;
@@ -530,183 +1142,240 @@
       }
     } catch (e) {}
   }
-  
-  // === Modal ===
-  function setCategoryFieldValue(val) {
-    const sel = document.getElementById('fCategory');
+
+  // === Modal helpers ===
+  function renderCategoryPills(selected) {
+    const wrap = document.getElementById('categoryPills');
+    const all = [...CATEGORY_LIST];
+    // Make sure any custom category persists in the list
+    if (selected && !all.includes(selected) && selected !== '__other__') {
+      all.push(selected);
+    }
+    wrap.innerHTML = all.map(c => `
+      <button type="button" class="cat-pill ${c === selected ? 'active' : ''}" data-cat="${escapeHtmlAttr(c)}">
+        ${categoryIconSVG(c, 14, c === selected ? '#fff' : '#14181F')}
+        <span>${escapeHtml(c)}</span>
+      </button>
+    `).join('') + `
+      <button type="button" class="cat-pill ${selected === '__other__' ? 'active' : ''}" data-cat="__other__">+ egyéb</button>
+    `;
+    wrap.querySelectorAll('.cat-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = btn.dataset.cat;
+        setCategoryValue(v);
+      });
+    });
+  }
+
+  function setCategoryValue(val) {
+    currentCategory = val || '';
     const other = document.getElementById('fCategoryOther');
-    if (!val) {
-      sel.value = '';
+    if (val === '__other__') {
+      other.style.display = 'block';
+      // focus a bit later so the layout settles
+      setTimeout(() => other.focus(), 30);
+    } else {
       other.style.display = 'none';
       other.value = '';
+    }
+    renderCategoryPills(currentCategory);
+  }
+
+  function readCategoryValue() {
+    if (currentCategory === '__other__') {
+      return document.getElementById('fCategoryOther').value.trim();
+    }
+    return currentCategory || '';
+  }
+
+  function setCategoryFromExisting(val) {
+    if (!val) {
+      currentCategory = '';
+      renderCategoryPills('');
+      document.getElementById('fCategoryOther').style.display = 'none';
+      document.getElementById('fCategoryOther').value = '';
       return;
     }
-    const known = [...sel.options].some(o => o.value === val);
-    if (known) {
-      sel.value = val;
-      other.style.display = 'none';
-      other.value = '';
+    if (CATEGORY_LIST.includes(val)) {
+      currentCategory = val;
+      renderCategoryPills(val);
+      document.getElementById('fCategoryOther').style.display = 'none';
+      document.getElementById('fCategoryOther').value = '';
     } else {
-      sel.value = '__other__';
+      currentCategory = '__other__';
+      renderCategoryPills('__other__');
+      const other = document.getElementById('fCategoryOther');
       other.style.display = 'block';
       other.value = val;
     }
   }
 
-  function readCategoryFieldValue() {
-    const sel = document.getElementById('fCategory');
-    if (sel.value === '__other__') return document.getElementById('fCategoryOther').value.trim();
-    return sel.value;
-  }
-
   function openAddModal(lat, lng) {
-    document.getElementById('modalTitle').textContent = '➕ Új étterem hozzáadása';
+    document.getElementById('modalEyebrow').textContent = 'Új étterem';
+    document.getElementById('modalTitle').style.display = 'none';
+    document.getElementById('modalAvgRow').style.display = 'none';
+    document.getElementById('modalIcon').innerHTML = categoryIconSVG('', 26, '#EC6B2C');
+
+    document.getElementById('nameField').style.display = '';
     document.getElementById('editId').value = '';
     document.getElementById('editLat').value = lat || '';
     document.getElementById('editLng').value = lng || '';
     document.getElementById('fName').value = '';
     document.getElementById('fAddress').value = '';
-    setCategoryFieldValue('');
+    setCategoryFromExisting('');
     document.getElementById('fNote').value = '';
     document.getElementById('fRecommender').value = '';
     document.getElementById('fLink').value = '';
     document.getElementById('fRater').value = myRaterName;
     currentRating = 0;
-    updateStars();
-    refreshRatingsBreakdown(null);
+    updateRatingButtons();
+    document.getElementById('othersField').style.display = 'none';
     document.getElementById('deleteBtn').style.display = 'none';
     document.getElementById('formModal').classList.add('active');
-    
+
     if (lat && lng) {
       reverseGeocode(lat, lng);
       if (tempMarker) map.removeLayer(tempMarker);
       tempMarker = L.marker([lat, lng], {
         icon: L.divIcon({
-          className: 'temp-marker',
-          html: '<div style="background:#c8102e;color:#fff;border:2px solid #1a1a1a;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;">+</div>',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
+          className: 'v2-marker-wrap',
+          html: `<div style="position:relative;width:42px;height:50px;">
+            <div style="position:absolute;left:50%;top:0;transform:translateX(-50%);width:40px;height:40px;border-radius:50%;background:#1F3F8A;border:2px solid #142B62;box-shadow:0 4px 12px rgba(20,24,31,0.22);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px;">＋</div>
+            <div style="position:absolute;left:50%;top:36px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:10px solid #142B62;"></div>
+          </div>`,
+          iconSize: [42, 50],
+          iconAnchor: [21, 48]
         })
       }).addTo(map);
     }
   }
-  
+
   function openEditModal(id) {
     const r = restaurants.find(x => x.id === id);
     if (!r) return;
-    document.getElementById('modalTitle').textContent = '✏️ Étterem szerkesztése';
+    activeId = id;
+    document.getElementById('modalEyebrow').textContent = 'Részletek · értékelés';
+    const title = document.getElementById('modalTitle');
+    title.textContent = r.name || 'Névtelen';
+    title.style.display = '';
+    document.getElementById('modalIcon').innerHTML = categoryIconSVG(r.category, 26, '#EC6B2C');
+
+    document.getElementById('nameField').style.display = '';
     document.getElementById('editId').value = r.id;
     document.getElementById('editLat').value = r.lat;
     document.getElementById('editLng').value = r.lng;
     document.getElementById('fName').value = r.name || '';
     document.getElementById('fAddress').value = r.address || '';
-    setCategoryFieldValue(r.category || '');
+    setCategoryFromExisting(r.category || '');
     document.getElementById('fNote').value = r.note || '';
     document.getElementById('fRecommender').value = r.recommender || '';
     document.getElementById('fLink').value = r.link || '';
     document.getElementById('fRater').value = myRaterName;
     currentRating = myRatingFor(r.id);
-    updateStars();
-    refreshRatingsBreakdown(r.id);
-    document.getElementById('deleteBtn').style.display = 'inline-block';
+    updateRatingButtons();
+    refreshAverageInModal(r.id);
+    refreshOthersBox(r.id);
+    document.getElementById('deleteBtn').style.display = document.body.classList.contains('admin') ? 'inline-flex' : 'none';
     document.getElementById('formModal').classList.add('active');
+
+    // Highlight the card in the sidebar
+    renderList();
   }
 
-  function refreshRatingsBreakdown(restaurantId) {
-    const box = document.getElementById('ratingsBreakdown');
-    const hint = document.getElementById('myRatingHint');
-    if (!restaurantId) {
-      box.innerHTML = '<em>Új étterem — még senki sem értékelte.</em>';
-      hint.textContent = '';
+  function refreshAverageInModal(restaurantId) {
+    const { avg, count } = averageRating(restaurantId);
+    const row = document.getElementById('modalAvgRow');
+    if (count === 0) {
+      row.style.display = 'none';
       return;
     }
-    const list = (ratingsByRestaurant[restaurantId] || []).slice().sort((a, b) => b.value - a.value);
-    const { avg, count } = averageRating(restaurantId);
-    if (count === 0) {
-      box.innerHTML = '<em>Még senki sem értékelte.</em>';
-    } else {
-      const rounded = Math.round(avg * 2) / 2;
-      const rows = list.map(r =>
-        `<div style="display:flex;align-items:center;gap:6px;padding:2px 0;">
-          ${renderStarsHTML(r.value, 12)}
-          <span>${escapeHtml(r.rater)}</span>
-        </div>`).join('');
-      box.innerHTML = `
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-          <b>Átlag:</b> ${renderStarsHTML(rounded, 14)}
-          <span>${rounded.toFixed(1)} (${count} értékelés)</span>
-        </div>
-        ${rows}
-      `;
-    }
-    hint.textContent = currentRating ? `(a saját értékelésed: ${currentRating}★)` : '';
+    row.style.display = '';
+    // Extract the dot children from a freshly rendered <span class="dots">…</span>
+    const tmp = document.createElement('div');
+    tmp.innerHTML = renderDotsHTML(avg, 'lg');
+    document.getElementById('modalAvgDots').innerHTML = tmp.firstElementChild.innerHTML;
+    document.getElementById('modalAvgValue').textContent = avg.toFixed(1);
+    document.getElementById('modalAvgCount').textContent = `· ${count} értékelés`;
   }
-  
+
+  function refreshOthersBox(restaurantId) {
+    const list = (ratingsByRestaurant[restaurantId] || [])
+      .filter(r => r.rater.toLowerCase() !== (myRaterName || '').toLowerCase())
+      .slice()
+      .sort((a, b) => b.value - a.value);
+    const field = document.getElementById('othersField');
+    if (list.length === 0) {
+      field.style.display = 'none';
+      return;
+    }
+    field.style.display = '';
+    document.getElementById('othersLabel').textContent = `Mások értékelése (${list.length})`;
+    document.getElementById('othersBox').innerHTML = list.map(r => `
+      <div class="others-row">
+        ${renderDotsHTML(r.value)}
+        <span class="name">${escapeHtml(r.rater)}</span>
+        <span class="val">${r.value}</span>
+      </div>
+    `).join('');
+  }
+
   function closeModal() {
     document.getElementById('formModal').classList.remove('active');
     if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+    activeId = null;
+    renderList();
   }
-  
-  // === Stars ===
-  function updateStars() {
-    document.querySelectorAll('#starsInput .star').forEach(s => {
-      s.classList.toggle('active', parseInt(s.dataset.v) <= currentRating);
+
+  // === Rating buttons ===
+  function updateRatingButtons() {
+    const btns = document.querySelectorAll('#ratingInput .rating-btn');
+    btns.forEach(b => {
+      const v = parseInt(b.dataset.v);
+      b.classList.toggle('filled', v <= currentRating);
+      b.disabled = !myRaterName;
     });
-    const hint = document.getElementById('myRatingHint');
-    if (hint) {
-      if (!myRaterName) {
-        hint.textContent = '— add meg a neved fent, hogy értékelhess';
-        hint.style.color = '#c8102e';
-      } else {
-        hint.textContent = currentRating ? `(a saját értékelésed: ${currentRating}★, kattints újra a törléshez)` : '(kattints a csillagra)';
-        hint.style.color = '#888';
-      }
+    const hint = document.getElementById('ratingHint');
+    if (!myRaterName) {
+      hint.textContent = '— add meg a neved, hogy értékelhess';
+      hint.classList.add('disabled');
+    } else {
+      hint.classList.remove('disabled');
+      hint.textContent = currentRating
+        ? `${currentRating} / 5 — újabb kattintásra törlöd`
+        : 'kattints a pontra';
     }
   }
-  document.querySelectorAll('#starsInput .star').forEach(s => {
-    s.addEventListener('click', () => {
+  document.querySelectorAll('#ratingInput .rating-btn').forEach(b => {
+    b.addEventListener('click', () => {
       if (!myRaterName) {
         document.getElementById('fRater').focus();
-        updateStars();
+        updateRatingButtons();
         return;
       }
-      const v = parseInt(s.dataset.v);
+      const v = parseInt(b.dataset.v);
       currentRating = (currentRating === v) ? 0 : v;
-      updateStars();
+      updateRatingButtons();
     });
   });
 
-  // Te-mező: nevet localStorage-ba és frissítjük a state-et
   document.getElementById('fRater').addEventListener('input', e => {
     myRaterName = e.target.value.trim();
     localStorage.setItem('rater_name', myRaterName);
-    updateStars();
+    updateRatingButtons();
   });
 
-  // Kategória select: ha 'Egyéb' → megjelenik a szabad szövegű mező
-  document.getElementById('fCategory').addEventListener('change', e => {
-    const other = document.getElementById('fCategoryOther');
-    if (e.target.value === '__other__') {
-      other.style.display = 'block';
-      other.focus();
-    } else {
-      other.style.display = 'none';
-      other.value = '';
-    }
-  });
-  
   // === Save / Delete ===
   async function saveRestaurant() {
     if (!checkConfig()) return;
     const name = document.getElementById('fName').value.trim();
     const address = document.getElementById('fAddress').value.trim();
-    
+
     if (!name) { alert('A név megadása kötelező!'); return; }
     if (!address) { alert('A cím megadása kötelező!'); return; }
-    
+
     let lat = parseFloat(document.getElementById('editLat').value);
     let lng = parseFloat(document.getElementById('editLng').value);
-    
+
     if (!lat || !lng) {
       document.getElementById('geocodeLoading').style.display = 'block';
       const coords = await geocodeAddress(address);
@@ -718,14 +1387,14 @@
       lat = coords.lat;
       lng = coords.lng;
     }
-    
-    const id = document.getElementById('editId').value || ('r_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
+
+    const id = document.getElementById('editId').value || ('r_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
     const data = {
       id,
       name,
       address,
-      category: readCategoryFieldValue(),
-      rating: null,    // legacy mező, már nem használjuk
+      category: readCategoryValue(),
+      rating: null,
       note: document.getElementById('fNote').value.trim(),
       recommender: document.getElementById('fRecommender').value.trim(),
       link: document.getElementById('fLink').value.trim(),
@@ -734,13 +1403,11 @@
 
     try {
       await upsertRestaurant(data);
-      // saját értékelés mentése külön táblába (csak ha van név és állítottad)
       if (myRaterName) {
         const prev = myRatingFor(id);
         if (currentRating > 0) {
           await upsertMyRating(id, currentRating);
         } else if (prev > 0) {
-          // korábban értékelted, most lenulláztad → töröljük
           await deleteMyRating(id);
         }
       }
@@ -753,7 +1420,7 @@
       console.error(e);
     }
   }
-  
+
   async function deleteRestaurant() {
     const id = document.getElementById('editId').value;
     if (!id) return;
@@ -767,41 +1434,78 @@
       setStatus('❌ Törlési hiba: ' + e.message, 'err');
     }
   }
-  
+
   // === Render ===
   function renderAll() {
     renderMarkers();
     renderList();
-    renderCategoryFilter();
+    renderCategoryChips();
+    document.getElementById('mapChipCount').textContent = `${restaurants.length} étterem`;
   }
-  
+
+  function v2MarkerHTML(r, isActive) {
+    const bg = isActive ? '#1F3F8A' : '#FFFFFF';
+    const ringColor = isActive ? '#142B62' : '#EC6B2C';
+    const iconColor = isActive ? '#FFFFFF' : '#EC6B2C';
+    const ringW = isActive ? 2.5 : 2;
+    const innerHalo = isActive
+      ? 'inset 0 0 0 2px rgba(255,255,255,0.18)'
+      : 'inset 0 0 0 3px rgba(255,255,255,0.55)';
+    const iconSvg = categoryIconSVG(r.category, 22, iconColor);
+    return `
+      <div style="position:relative;width:42px;height:50px;">
+        <div style="position:absolute;left:50%;top:0;transform:translateX(-50%);
+          width:40px;height:40px;border-radius:50%;background:${bg};
+          border:${ringW}px solid ${ringColor};
+          box-shadow:0 4px 12px rgba(20,24,31,0.22), ${innerHalo};
+          display:flex;align-items:center;justify-content:center;">${iconSvg}</div>
+        <div style="position:absolute;left:50%;top:36px;transform:translateX(-50%);
+          width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;
+          border-top:10px solid ${ringColor};
+          filter:drop-shadow(0 2px 2px rgba(20,24,31,0.18));"></div>
+      </div>`;
+  }
+
   function renderMarkers() {
     markersLayer.clearLayers();
-    restaurants.forEach(r => {
+    const filtered = filteredRestaurants();
+    filtered.forEach(r => {
+      const isActive = r.id === activeId;
       const { avg, count } = averageRating(r.id);
-      const ratingHtml = count > 0
-        ? `<p>${renderStarsHTML(avg, 16)} <span style="color:#555;font-size:12px;">${avg.toFixed(1)} (${count})</span></p>`
-        : `<p style="color:#888;font-size:12px;">Még nincs értékelés</p>`;
       const marker = L.marker([r.lat, r.lng], {
         icon: L.divIcon({
-          className: 'r-marker',
-          html: `<div style="background:#ffd700;border:2px solid #1a1a1a;border-radius:50% 50% 50% 0;width:30px;height:30px;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 4px rgba(0,0,0,0.3);"><span style="transform:rotate(45deg);font-size:16px;">🍽️</span></div>`,
-          iconSize: [30, 30],
-          iconAnchor: [15, 30]
+          className: 'v2-marker-wrap',
+          html: v2MarkerHTML(r, isActive),
+          iconSize: [42, 50],
+          iconAnchor: [21, 48]
         })
       });
 
+      const tip = count > 0
+        ? `${escapeHtml(r.name)} · ${avg.toFixed(1)}★`
+        : escapeHtml(r.name);
+      marker.bindTooltip(tip, {
+        direction: 'top', offset: [0, -38], opacity: 1, className: 'v2-tip',
+      });
+
+      const ratingHtml = count > 0
+        ? `<div class="prating">${renderDotsHTML(avg)}<span class="v">${avg.toFixed(1)}</span><span class="c">· ${count} értékelés</span></div>`
+        : `<div class="prating"><span class="c" style="font-style:italic;">Még nincs értékelés</span></div>`;
+
       const popup = `
-        <div class="popup-content">
+        <div class="popup-card">
+          ${r.category ? `<div class="pcat">${escapeHtml(r.category)}</div>` : ''}
           <h3>${escapeHtml(r.name)}</h3>
-          ${r.category ? `<p><span style="background:#c8102e;color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">${escapeHtml(r.category)}</span></p>` : ''}
           ${ratingHtml}
-          <p>📍 ${escapeHtml(r.address)}</p>
-          ${r.note ? `<p>📝 ${escapeHtml(r.note)}</p>` : ''}
-          ${r.recommender ? `<p>👤 Ajánlja: <b>${escapeHtml(r.recommender)}</b></p>` : ''}
-          ${r.link ? `<p>🔗 <a href="${escapeHtml(r.link)}" target="_blank">Megnyitás</a></p>` : ''}
-          <div class="popup-actions">
-            <button class="btn btn-small btn-primary" onclick="openEditModal('${r.id}')">✏️ Szerkesztés / értékelés</button>
+          <div class="pmeta">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7682" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span>${escapeHtml(r.address)}</span>
+          </div>
+          ${r.note ? `<div class="pmeta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7682" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg><span>${escapeHtml(r.note)}</span></div>` : ''}
+          ${r.recommender ? `<div class="pmeta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7682" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 22a8 8 0 0 1 16 0"/></svg><span>Ajánlja: <b style="color:#14181F;">${escapeHtml(r.recommender)}</b></span></div>` : ''}
+          ${r.link ? `<div class="pmeta"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7682" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 10a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1-1"/></svg><a href="${escapeHtmlAttr(r.link)}" target="_blank" rel="noopener">Megnyitás</a></div>` : ''}
+          <div class="pactions">
+            <button class="btn btn-primary" onclick="openEditModal('${escapeHtmlAttr(r.id)}')">Részletek</button>
           </div>
         </div>
       `;
@@ -809,76 +1513,138 @@
       markersLayer.addLayer(marker);
     });
   }
-  
-  function renderList() {
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const catFilter = document.getElementById('categoryFilter').value;
-    const list = document.getElementById('restaurantList');
-    
+
+  function filteredRestaurants() {
+    const search = (document.getElementById('searchInput')?.value || '').toLowerCase();
     let filtered = restaurants.filter(r => {
-      const matchSearch = !search || 
-        r.name.toLowerCase().includes(search) || 
+      const matchSearch = !search ||
+        r.name.toLowerCase().includes(search) ||
         (r.address || '').toLowerCase().includes(search) ||
         (r.recommender || '').toLowerCase().includes(search);
-      const matchCat = !catFilter || r.category === catFilter;
+      const matchCat = !selectedFilterCategory || r.category === selectedFilterCategory;
       return matchSearch && matchCat;
     });
-    
-    if (filtered.length === 0) {
-      list.innerHTML = `<div class="empty-state">
-        ${restaurants.length === 0 ? '🍽️ Még nincs egy étterem se.<br>Adj hozzá egyet!' : '🔍 Nincs találat.'}
-      </div>`;
-      return;
-    }
-    
     filtered.sort((a, b) => {
       const aa = averageRating(a.id).avg, bb = averageRating(b.id).avg;
       if (bb !== aa) return bb - aa;
       return a.name.localeCompare(b.name, 'hu');
     });
+    return filtered;
+  }
+
+  function renderList() {
+    const list = document.getElementById('restaurantList');
+    const filtered = filteredRestaurants();
+
+    document.getElementById('listCount').textContent = filtered.length;
+    document.getElementById('listLabel').textContent = filtered.length === 1 ? 'hely' : 'hely a környéken';
+
+    // Toggle clear button visibility
+    const clearBtn = document.getElementById('clearSearch');
+    if (clearBtn) clearBtn.style.display = document.getElementById('searchInput').value ? 'inline-block' : 'none';
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty-state">${restaurants.length === 0 ? 'Még nincs egy étterem se.' : 'Nincs találat. Próbálj más keresést.'}</div>`;
+      // Update markers to reflect filter (no results = empty map markers)
+      renderMarkers();
+      document.getElementById('mapChipCount').textContent = `0 étterem`;
+      return;
+    }
 
     list.innerHTML = filtered.map(r => {
       const { avg, count } = averageRating(r.id);
+      const isActive = r.id === activeId;
       const ratingHtml = count > 0
-        ? `${renderStarsHTML(avg, 14)}<span class="rating-count">${avg.toFixed(1)} (${count})</span>`
-        : `<span class="rating-count" style="font-style:italic;">nincs értékelés</span>`;
+        ? `${renderDotsHTML(avg)}<span class="card-rating-value">${avg.toFixed(1)}</span><span class="card-rating-count">· ${count} ért.</span>`
+        : `<span class="card-no-rating">új hely</span>`;
+      const shortAddr = (r.address || '').replace(/^1\d{3} Budapest, /, '');
       return `
-        <div class="restaurant-card" onclick="focusRestaurant('${r.id}')">
-          <h3>${escapeHtml(r.name)}</h3>
-          ${r.category ? `<span class="category">${escapeHtml(r.category)}</span>` : ''}
-          <span class="stars">${ratingHtml}</span>
-          <div class="meta">📍 ${escapeHtml(r.address)}</div>
-          ${r.recommender ? `<div class="meta">👤 ${escapeHtml(r.recommender)}</div>` : ''}
-          ${r.note ? `<div class="meta">📝 ${escapeHtml(r.note.substring(0, 80))}${r.note.length > 80 ? '...' : ''}</div>` : ''}
+        <div class="card ${isActive ? 'active' : ''}" onclick="focusRestaurant('${escapeHtmlAttr(r.id)}')">
+          <div class="card-top">
+            <div class="card-icon">${categoryIconSVG(r.category, 22, '#EC6B2C')}</div>
+            <div class="card-body">
+              <h3 class="card-name">${escapeHtml(r.name)}</h3>
+              <div class="card-rating-row">
+                ${ratingHtml}
+                ${r.category ? `<span class="card-cat-tag">${escapeHtml(r.category)}</span>` : ''}
+              </div>
+            </div>
+          </div>
+          <div class="card-meta">
+            <div class="card-meta-row">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7682" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>${escapeHtml(shortAddr)}</span>
+            </div>
+            ${r.recommender ? `
+              <div class="card-recommender">
+                <span class="recommender-avatar">${escapeHtml(initials(r.recommender))}</span>
+                <span class="recommender-name">${escapeHtml(r.recommender)}</span>
+                <span>ajánlja</span>
+              </div>
+            ` : ''}
+            ${r.note ? `<div class="card-meta-row">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6F7682" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
+              <span>${escapeHtml(r.note.substring(0, 100))}${r.note.length > 100 ? '…' : ''}</span>
+            </div>` : ''}
+          </div>
         </div>
       `;
     }).join('');
+
+    // Re-render markers because filter or active state may have changed
+    renderMarkers();
+    document.getElementById('mapChipCount').textContent = `${filtered.length} étterem`;
   }
-  
-  function renderCategoryFilter() {
-    const sel = document.getElementById('categoryFilter');
-    const current = sel.value;
+
+  function renderCategoryChips() {
     const cats = [...new Set(restaurants.map(r => r.category).filter(Boolean))].sort();
-    sel.innerHTML = '<option value="">Minden kategória</option>' + 
-      cats.map(c => `<option value="${escapeHtml(c)}" ${c === current ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
+    const chips = document.getElementById('categoryChips');
+    chips.innerHTML = `
+      <button type="button" class="chip ${!selectedFilterCategory ? 'active' : ''}" data-cat="">
+        Mind <span class="count">${restaurants.length}</span>
+      </button>
+      ${cats.map(c => `
+        <button type="button" class="chip ${selectedFilterCategory === c ? 'active' : ''}" data-cat="${escapeHtmlAttr(c)}">
+          ${categoryIconSVG(c, 14, selectedFilterCategory === c ? '#fff' : '#14181F')}
+          <span>${escapeHtml(c)}</span>
+        </button>
+      `).join('')}
+    `;
+    chips.querySelectorAll('.chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const v = btn.dataset.cat;
+        selectedFilterCategory = (v === selectedFilterCategory) ? '' : v;
+        renderCategoryChips();
+        renderList();
+      });
+    });
   }
-  
+
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    renderList();
+  }
+
   function focusRestaurant(id) {
     const r = restaurants.find(x => x.id === id);
     if (!r) return;
-    map.setView([r.lat, r.lng], 16);
+    activeId = id;
+    map.flyTo([r.lat, r.lng], Math.max(map.getZoom(), 16), { duration: 0.5 });
+    renderList();
+    // Open popup on the matching marker
     markersLayer.eachLayer(m => {
       if (Math.abs(m.getLatLng().lat - r.lat) < 0.0001 && Math.abs(m.getLatLng().lng - r.lng) < 0.0001) {
         m.openPopup();
       }
     });
   }
-  
+
   function escapeHtml(str) {
-    if (!str) return '';
+    if (str === null || str === undefined) return '';
     return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  
+  function escapeHtmlAttr(str) { return escapeHtml(str).replace(/"/g, '&quot;'); }
+
   // === Export ===
   function downloadFile(filename, content, mime) {
     const blob = new Blob([content], { type: mime });
@@ -891,13 +1657,13 @@
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
-  
+
   function exportJSON() {
     if (restaurants.length === 0) { alert('Nincs exportálható adat!'); return; }
     const ts = new Date().toISOString().slice(0,10);
     downloadFile(`ettermek_${ts}.json`, JSON.stringify(restaurants, null, 2), 'application/json');
   }
-  
+
   function exportXML() {
     if (restaurants.length === 0) { alert('Nincs exportálható adat!'); return; }
     const xmlEscape = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
@@ -920,8 +1686,7 @@
     const ts = new Date().toISOString().slice(0,10);
     downloadFile(`ettermek_${ts}.xml`, xml, 'application/xml');
   }
-  
-  // === Import ===
+
   async function importJSON(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -934,15 +1699,12 @@
       const text = await file.text();
       const data = JSON.parse(text);
       if (!Array.isArray(data)) throw new Error('A fájl nem tömböt tartalmaz!');
-      
-      setStatus(`⏳ ${data.length} étterem importálása...`, 'ok');
+
+      setStatus(`⏳ ${data.length} étterem importálása…`, 'ok');
       let ok = 0, fail = 0;
       for (const r of data) {
         try {
-          if (!r.id || !r.name || !r.lat || !r.lng) {
-            fail++;
-            continue;
-          }
+          if (!r.id || !r.name || !r.lat || !r.lng) { fail++; continue; }
           await upsertRestaurant(r);
           ok++;
         } catch (e) {
@@ -957,8 +1719,10 @@
     }
     event.target.value = '';
   }
-  
+
   // === Boot ===
   initMap();
   loadData();
 </script>
+</body>
+</html>

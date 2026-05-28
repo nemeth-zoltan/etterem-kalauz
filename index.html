@@ -1039,22 +1039,25 @@
     'cukrászda', 'nemzetközi', 'étterem',
   ];
 
-  // SVG ikon-katalógus (path-ek), V2-ből portolva
+  // SVG ikon-katalógus (24×24 viewBox, 1.7 stroke, egyedi sziluettek)
   const ICON_PATHS = {
-    'magyar': '<path d="M9 6c0-1.5 1-2.5 2.5-2.5S14 4.5 14 6"/><path d="M11 6c.5-.5 1-.5 1.5 0"/><path d="M10.5 6c-3.5 1.5-6 5-6 9 0 3 2 5 4.5 5 4 0 8-4 8-9 0-3-2-5-4.5-5-.5 0-1 0-2 0Z"/>',
-    'olasz':  '<path d="M3 13h18a8 8 0 0 1-8 8h-2a8 8 0 0 1-8-8Z"/><path d="M7 13c0-3 2-5 5-5"/><path d="M10 13c0-2 1.5-3.5 3.5-3.5"/><path d="M13 13c0-1.5 1-2.5 2.5-2.5"/><circle cx="16.5" cy="6" r="1"/>',
-    'ázsiai': '<path d="M3 14h14a7 7 0 0 1-7 7H10a7 7 0 0 1-7-7Z"/><path d="M15 3l5 5"/><path d="M18 3l4 4"/>',
+    'magyar': '<path d="M5 11 h 14 v 7 a 2 2 0 0 1 -2 2 H 7 a 2 2 0 0 1 -2 -2 Z"/><path d="M3 11 h 18"/><path d="M5 14 h -1.5"/><path d="M19 14 h 1.5"/><path d="M11 11 v -1.5 a 1 1 0 0 1 2 0 V 11"/><path d="M9 7 c 0 -1.2 1 -1.5 1 -3"/><path d="M14 7 c 0 -1.2 1 -1.5 1 -3"/>',
+    'olasz': '<path d="M11 11 L 5 6 L 3 8 L 4 12 L 3 16 L 5 18 L 11 13 Z"/><path d="M13 11 L 19 6 L 21 8 L 20 12 L 21 16 L 19 18 L 13 13 Z"/><path d="M11 11 L 11 13"/><path d="M13 11 L 13 13"/><path d="M12 11 v 2"/>',
+    'ázsiai': '<path d="M4 13h14a7 7 0 0 1-7 7h0a7 7 0 0 1-7-7Z"/><path d="M16 4l4 6"/><path d="M19 4l3 5.5"/><path d="M8 9c0-1 .5-1.5 0-2.5"/><path d="M11 9c0-1 .5-1.5 0-2.5"/>',
     'pizzéria': '<path d="M12 3 4 19a1 1 0 0 0 1 1.5l14-1a1 1 0 0 0 .8-1.4Z"/><circle cx="11" cy="11" r="1.1" fill="@@FILL@@"/><circle cx="14" cy="14" r="1.1" fill="@@FILL@@"/><circle cx="9" cy="16" r="1.1" fill="@@FILL@@"/>',
-    'gyors-étterem': '<path d="M6 10h12l-1.5 10a1 1 0 0 1-1 .9H8.5a1 1 0 0 1-1-.9Z"/><path d="M6 10v-2a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2"/><path d="M9 7V4"/><path d="M12 7V3"/><path d="M15 7V5"/>',
-    'kávézó': '<path d="M4 10h13v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z"/><path d="M17 12h2a2.5 2.5 0 0 1 0 5h-2"/><path d="M8 6c0-1 1-1.5 1-2.5S8 2 8 1"/><path d="M12 6c0-1 1-1.5 1-2.5S12 2 12 1"/>',
-    'menüs': '<path d="M8 3v8a2 2 0 0 1-2 2H5v8"/><path d="M8 3v18"/><path d="M11 3v6a2 2 0 0 0 2 2"/><path d="M17 3c-1.5 0-3 1.8-3 5s1.5 5 3 5v8"/>',
+    'gyors-étterem': '<path d="M3 9 h 7 l -.7 11 a 1 1 0 0 1 -1 1 H 4.7 a 1 1 0 0 1 -1 -1 Z"/><path d="M3 9 h 7"/><path d="M7 9 V 5"/><path d="M7 5 l 2 0"/><path d="M13 14 h 8 l -.7 6 a 1 1 0 0 1 -1 1 H 14.7 a 1 1 0 0 1 -1 -1 Z"/><path d="M13 14 h 8"/><path d="M15 14 V 7"/><path d="M17 14 V 5"/><path d="M19 14 V 8"/>',
+    'kávézó': '<path d="M6 9h12l-1.2 11.2a2 2 0 0 1-2 1.8H9.2a2 2 0 0 1-2-1.8Z"/><path d="M5 9h14a1 1 0 0 0 0-2H5a1 1 0 0 0 0 2Z"/><path d="M9 5c0-1 1-1.5 1-2.5S9 1 9 0"/><path d="M13 5c0-1 1-1.5 1-2.5S13 1 13 0"/>',
+    'menüs': '<rect x="5" y="5" width="14" height="16" rx="2"/><path d="M9 3h6a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12h8"/><path d="M9 15h8"/><path d="M9 18h5"/>',
     'hamburger': '<path d="M3 11a9 9 0 0 1 18 0Z"/><path d="M3 14h18"/><path d="M3 17h18a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3Z"/>',
-    'gyros / kebab': '<path d="M6 4h12l-2 16a2 2 0 0 1-2 1.5h-4a2 2 0 0 1-2-1.5Z"/><path d="M7 9h10"/><path d="M8 14h8"/>',
+    'gyros / kebab': '<path d="M12 3 v 2"/><path d="M6 5 L 18 5 L 15 21 L 9 21 Z"/><path d="M7 10 L 17 10"/><path d="M8 14 L 16 14"/><path d="M9 18 L 15 18"/>',
     'vegetáriánus': '<path d="M20 4c0 8-4 14-12 16-1-7 3-14 12-16Z"/><path d="M8 20c2-6 5-9 10-12"/>',
-    'reggeliző': '<path d="M3 18 8 7c.5-1 2-1.5 3-1l8 4c1 .5 1.5 2 1 3l-2 5c-.4 1-1.5 1.5-2.5 1.5Z"/><path d="M8 9l4 8"/><path d="M12 8l3 7"/><path d="M15 7l2 6"/>',
+    'reggeliző': '<path d="M5.5 13c-1-4 1.5-8 5.5-9c4.5-1 9 2 9.5 6c.4 3-1.5 5-3.5 5c-1 1-2 2-4 2c-3 1-7 0-7.5-4Z"/><circle cx="11" cy="11" r="2.5"/>',
     'cukrászda': '<path d="M4 21h16v-7a3 3 0 0 0-3-3H7a3 3 0 0 0-3 3Z"/><path d="M4 15h16"/><path d="M9 8V5"/><path d="M12 8V4"/><path d="M15 8V5"/>',
     'nemzetközi': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18Z"/>',
-    'étterem': '<path d="M3 18h18"/><path d="M4 18a8 8 0 0 1 16 0"/><path d="M12 6V3"/><path d="M10 3h4"/>',
+    'étterem': '<path d="M6 3v6 a1.5 1.5 0 0 0 3 0 V3"/><path d="M7.5 9v12"/><path d="M16 3 c 2 .5 3 3 3 6 v3 h-3"/><path d="M16 12v9"/>',
+    'pub': '<path d="M6 9h10v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2Z"/><path d="M16 11 a3 3 0 0 1 0 6 h-1"/><path d="M6 9 c 1-2 3-2 4 0 c 1-2 3-2 4 0 c 1-2 2-1 2 0"/>',
+    'bagel (sandwich)': '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><ellipse cx="9" cy="6.5" rx=".5" ry="1" transform="rotate(-30 9 6.5)" fill="@@FILL@@"/><ellipse cx="13" cy="5.2" rx=".5" ry="1" fill="@@FILL@@"/><ellipse cx="17" cy="8.5" rx=".5" ry="1" transform="rotate(30 17 8.5)" fill="@@FILL@@"/>',
+    'fagylaltozó': '<path d="M6.5 11a5.5 5.5 0 0 1 11 0Z"/><path d="M6.5 11l5.5 10l5.5-10Z"/><path d="M9 14l6 0"/><path d="M10.5 17l3 0"/>',
     'default': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
   };
 
